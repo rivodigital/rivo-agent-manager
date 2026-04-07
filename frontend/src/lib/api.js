@@ -1,8 +1,10 @@
 import axios from "axios";
 
+const AUTH_TOKEN = import.meta.env.VITE_AUTH_TOKEN || "rivo-dev-token-2026";
+
 export const api = axios.create({
   baseURL: "/api",
-  headers: { Authorization: "Bearer rivo-dev-token-2026" },
+  headers: { Authorization: `Bearer ${AUTH_TOKEN}` },
 });
 
 export const get = (url, params) => api.get(url, { params }).then(r => r.data);
