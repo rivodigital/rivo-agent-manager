@@ -1,0 +1,13 @@
+{
+  "name": "rivo-agent-manager",
+  "version": "0.1.0",
+  "private": true,
+  "scripts": {
+    "dev": "concurrently -n backend,frontend -c blue,magenta \"npm --prefix backend run dev\" \"npm --prefix frontend run dev\"",
+    "install:all": "npm --prefix backend install && npm --prefix frontend install",
+    "db:setup": "npm --prefix backend run db:setup"
+  },
+  "devDependencies": {
+    "concurrently": "^9.1.0"
+  }
+}

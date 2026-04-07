@@ -1,0 +1,89 @@
+services:
+  postgres-evolution:
+    image: postgres:16-alpine
+    container_name: rivo-postgres-evolution
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: evolution
+      POSTGRES_PASSWORD: evolution
+      POSTGRES_DB: evolution
+    volumes:
+      - postgres_evolution_data:/var/lib/postgresql/data
+    networks:
+      - rivo-network
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U evolution"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  redis:
+    image: redis:7-alpine
+    container_name: rivo-redis
+    restart: unless-stopped
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    networks:
+      - rivo-network
+
+  evolution-api:
+    image: evoapicloud/evolution-api:v2.3.7
+    container_name: rivo-evolution-api
+    restart: unless-stopped
+    depends_on:
+      postgres-evolution:
+        condition: service_healthy
+      redis:
+        condition: service_started
+    ports:
+      - "8080:8080"
+    environment:
+      SERVER_URL: http://localhost:8080
+      AUTHENTICATION_API_KEY: ${EVOLUTION_API_KEY:-rivo-evolution-dev-key-change-me}
+      AUTHENTICATION_EXPOSE_IN_FETCH_INSTANCES: "true"
+
+      DATABASE_ENABLED: "true"
+      DATABASE_PROVIDER: postgresql
+      DATABASE_CONNECTION_URI: postgresql://evolution:evolution@postgres-evolution:5432/evolution?schema=public
+      DATABASE_CONNECTION_CLIENT_NAME: evolution_exchange
+
+      # Desativando Redis temporariamente para teste de estabilidade
+      CACHE_REDIS_ENABLED: "false"
+
+      # Webhook configuração (Já verificado que o backend recebe)
+      WEBHOOK_GLOBAL_URL: http://host.docker.internal:3001/api/webhook/evolution
+      WEBHOOK_GLOBAL_ENABLED: "true"
+      WEBHOOK_GLOBAL_WEBHOOK_BY_EVENTS: "true"
+      WEBHOOK_GLOBAL_WEBHOOK_BASE64: "true"
+
+      WEBHOOK_EVENTS_MESSAGES_UPSERT: "true"
+      WEBHOOK_EVENTS_CONNECTION_UPDATE: "true"
+      WEBHOOK_EVENTS_QRCODE_UPDATED: "true"
+
+      # Estabilidade Baileys
+      WEBHOOK_EVENTS_MESSAGES_UPDATE: "true"
+      WEBHOOK_EVENTS_MESSAGES_SET: "true"
+      
+      LOG_LEVEL: ERROR,WARN,INFO
+
+      # Força versão recente do WhatsApp Web (fix loop sem QR)
+      CONFIG_SESSION_PHONE_VERSION: 2.3000.1023204200
+      CONFIG_SESSION_PHONE_CLIENT: Rivo
+      CONFIG_SESSION_PHONE_NAME: Chrome
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    volumes:
+      - evolution_instances:/evolution/instances
+    networks:
+      - rivo-network
+
+volumes:
+  postgres_evolution_data:
+  redis_data:
+  evolution_instances:
+
+networks:
+  rivo-network:
+    driver: bridge

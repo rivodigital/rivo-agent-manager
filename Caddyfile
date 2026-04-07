@@ -1,0 +1,31 @@
+# Caddyfile — proxy reverso com HTTPS automático via Let's Encrypt
+# As variáveis {$DOMAIN} e {$ACME_EMAIL} vêm do .env
+
+{
+    email {$ACME_EMAIL}
+}
+
+{$DOMAIN} {
+    encode gzip zstd
+
+    # Rotas do backend (/api/*)
+    handle /api/* {
+        reverse_proxy backend:3001
+    }
+
+    # Healthcheck do backend (sem o prefixo /api)
+    handle /health {
+        reverse_proxy backend:3001
+    }
+
+    # Tudo o resto vai pro frontend (nginx servindo o SPA)
+    handle {
+        reverse_proxy frontend:80
+    }
+
+    # Logs estruturados
+    log {
+        output stdout
+        format console
+    }
+}

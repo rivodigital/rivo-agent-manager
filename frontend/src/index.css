@@ -1,0 +1,42 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    color-scheme: dark;
+  }
+  html, body, #root { height: 100%; }
+  body {
+    background: radial-gradient(ellipse at top, #14141f 0%, #0a0a0f 60%);
+  }
+  ::-webkit-scrollbar { width: 10px; height: 10px; }
+  ::-webkit-scrollbar-thumb { background: #2e2e3e; border-radius: 6px; }
+  ::-webkit-scrollbar-track { background: transparent; }
+}
+
+@layer components {
+  .card {
+    @apply bg-bg-elevated/70 border border-border rounded-lg backdrop-blur-sm;
+  }
+  .input {
+    @apply w-full bg-bg-surface border border-border rounded-md px-3 py-2 text-sm
+           focus:outline-none focus:border-accent transition;
+  }
+  .label {
+    @apply block text-xs font-mono uppercase tracking-wider text-zinc-400 mb-1.5;
+  }
+  .btn {
+    @apply inline-flex items-center gap-2 px-3 py-2 rounded-md text-sm font-medium
+           border border-border hover:border-border-strong hover:bg-bg-surface transition;
+  }
+  .btn-primary {
+    @apply bg-accent border-accent hover:bg-accent/90 hover:border-accent text-white;
+  }
+  .btn-danger {
+    @apply text-accent-red border-accent-red/40 hover:bg-accent-red/10;
+  }
+  .badge {
+    @apply inline-flex items-center px-2 py-0.5 rounded text-[10px] font-mono uppercase tracking-wider border;
+  }
+}

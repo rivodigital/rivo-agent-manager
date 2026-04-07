@@ -1,0 +1,160 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+model Provider {
+  id        String   @id @default(cuid())
+  name      String   @unique
+  label     String
+  apiKey    String
+  baseUrl   String?
+  status    String   @default("active")
+  models    String
+  agents    Agent[]
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model Client {
+  id           String   @id @default(cuid())
+  name         String
+  slug         String   @unique
+  segment      String?
+  contactName  String?
+  contactEmail String?
+  contactPhone String?
+  notes        String?
+  status       String   @default("active")
+  agents       Agent[]
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+}
+
+model Agent {
+  id                    String          @id @default(cuid())
+  clientId              String
+  client                Client          @relation(fields: [clientId], references: [id], onDelete: Cascade)
+  providerId            String
+  provider              Provider        @relation(fields: [providerId], references: [id])
+
+  name                  String
+  slug                  String          @unique
+  description           String?
+
+  model                 String
+  systemPrompt          String
+  temperature           Float           @default(0.7)
+  maxTokens             Int             @default(2048)
+
+  qualificationCriteria String?
+  escalationRules       String?
+  responseGuidelines    String?
+
+  channels              String?
+
+  implementationPhase   String          @default("diagnosis")
+  deployedAt            DateTime?
+  monthlyCostEstimate   Float?
+  clientValueMetric     String?
+
+  status                String          @default("draft")
+
+  knowledgeFiles        KnowledgeFile[]
+  agentNotes            AgentNote[]
+  usageLogs             UsageLog[]
+  whatsappInstance      WhatsAppInstance?
+  conversations         Conversation[]
+
+  createdAt             DateTime        @default(now())
+  updatedAt             DateTime        @updatedAt
+}
+
+model KnowledgeFile {
+  id        String   @id @default(cuid())
+  agentId   String
+  agent     Agent    @relation(fields: [agentId], references: [id], onDelete: Cascade)
+  title     String
+  category  String
+  content   String
+  sortOrder Int      @default(0)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model AgentNote {
+  id        String   @id @default(cuid())
+  agentId   String
+  agent     Agent    @relation(fields: [agentId], references: [id], onDelete: Cascade)
+  type      String
+  content   String
+  createdAt DateTime @default(now())
+}
+
+model WhatsAppInstance {
+  id           String    @id @default(cuid())
+  agentId      String    @unique
+  agent        Agent     @relation(fields: [agentId], references: [id], onDelete: Cascade)
+  instanceName String    @unique
+  instanceId   String?
+  phoneNumber  String?
+  status       String    @default("disconnected")
+  qrCode       String?
+  connectedAt  DateTime?
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
+}
+
+model Conversation {
+  id                 String    @id @default(cuid())
+  agentId            String
+  agent              Agent     @relation(fields: [agentId], references: [id], onDelete: Cascade)
+  remoteJid          String
+  leadName           String?
+  leadPhone          String?
+  status             String    @default("active")
+  qualificationScore Int?
+  qualificationData  String?
+  assignedTo         String?
+  summary            String?
+  messages           Message[]
+  startedAt          DateTime  @default(now())
+  lastMessageAt      DateTime  @default(now())
+  closedAt           DateTime?
+  createdAt          DateTime  @default(now())
+  updatedAt          DateTime  @updatedAt
+
+  @@unique([agentId, remoteJid])
+}
+
+model Message {
+  id             String       @id @default(cuid())
+  conversationId String
+  conversation   Conversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+  role           String
+  content        String
+  messageType    String       @default("text")
+  whatsappMsgId  String?
+  tokensUsed     Int?
+  costEstimate   Float?
+  metadata       String?
+  createdAt      DateTime     @default(now())
+}
+
+model UsageLog {
+  id                 String   @id @default(cuid())
+  agentId            String
+  agent              Agent    @relation(fields: [agentId], references: [id], onDelete: Cascade)
+  period             String
+  tokensInput        Int      @default(0)
+  tokensOutput       Int      @default(0)
+  totalCost          Float    @default(0)
+  conversationsCount Int      @default(0)
+  leadsQualified     Int      @default(0)
+  leadsEscalated     Int      @default(0)
+  createdAt          DateTime @default(now())
+}
