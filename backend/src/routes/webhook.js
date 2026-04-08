@@ -18,7 +18,7 @@ function bufferMessage({ agent, instanceName, remoteJid, pushName, text, message
   let entry = pendingByConv.get(key);
 
   if (!entry) {
-    entry = { timer: null, parts: [], agent, instanceName, remoteJid, pushName, messageType };
+    entry = { timer: null, parts: [], seenIds: new Set(), agent, instanceName, remoteJid, pushName, messageType };
     pendingByConv.set(key, entry);
   }
 
@@ -26,12 +26,14 @@ function bufferMessage({ agent, instanceName, remoteJid, pushName, text, message
   entry.pushName = pushName || entry.pushName;
   entry.whatsappMsgId = whatsappMsgId;
 
-  // If non-text, just push immediately (don't buffer)
-  if (messageType !== "text") {
-    entry.parts.push({ text: text || "", messageType });
-  } else {
-    entry.parts.push({ text: text || "", messageType: "text" });
+  // Dedupe: Evolution entrega o mesmo evento em / e /messages-upsert
+  if (whatsappMsgId && entry.seenIds.has(whatsappMsgId)) {
+    console.log(`[webhook] msg duplicada ignorada id=${whatsappMsgId}`);
+    return;
   }
+  if (whatsappMsgId) entry.seenIds.add(whatsappMsgId);
+
+  entry.parts.push({ text: text || "", messageType: messageType === "text" ? "text" : messageType });
 
   // Reset timer
   if (entry.timer) clearTimeout(entry.timer);
