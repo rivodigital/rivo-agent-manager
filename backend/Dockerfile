@@ -12,6 +12,7 @@ RUN npm install --omit=dev
 # Copia o restante do código
 COPY prisma ./prisma
 COPY src ./src
+COPY scripts ./scripts
 
 # Gera o Prisma Client
 RUN npx prisma generate
