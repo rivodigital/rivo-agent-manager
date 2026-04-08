@@ -14,16 +14,23 @@ const links = [
 export default function Sidebar() {
   const { user, logout } = useAuth();
   return (
-    <aside className="w-60 shrink-0 border-r border-border bg-bg-elevated/40 flex flex-col">
-      <div className="px-5 py-5 border-b border-border">
-        <div className="font-mono text-2xl font-bold tracking-tight">
-          RIVO<span className="text-accent">.</span>
-        </div>
-        <div className="text-[10px] font-mono uppercase tracking-widest text-zinc-500 mt-1">
-          Agent Manager
+    <aside className="w-64 shrink-0 border-r border-brand-border/50 flex flex-col bg-brand-black/50 backdrop-blur-xl">
+      <div className="px-6 py-6 border-b border-brand-border/50">
+        <div className="flex items-center gap-3">
+          <div className="w-10 h-10 rounded-xl bg-brand-accent/10 border border-brand-accent/20 flex items-center justify-center">
+            <span className="text-brand-accent font-bold text-sm">RIVO</span>
+          </div>
+          <div>
+            <div className="font-sora text-lg font-bold tracking-tight">
+              RIVO<span className="text-brand-accent">.</span>
+            </div>
+            <div className="text-[10px] font-mono uppercase tracking-widest text-brand-muted">
+              Agent Manager
+            </div>
+          </div>
         </div>
       </div>
-      <nav className="flex-1 p-3 space-y-1">
+      <nav className="flex-1 p-4 space-y-1">
         {links.map(({ to, label, icon: Icon, end }) => (
           <NavLink
             key={to}
@@ -31,30 +38,33 @@ export default function Sidebar() {
             end={end}
             className={({ isActive }) =>
               cn(
-                "flex items-center gap-3 px-3 py-2 rounded-md text-sm transition",
+                "flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium transition-all duration-300",
                 isActive
-                  ? "bg-accent/10 text-accent border border-accent/30"
-                  : "text-zinc-400 hover:text-zinc-100 hover:bg-bg-surface border border-transparent"
+                  ? "bg-brand-white/5 text-brand-white border border-brand-white/10"
+                  : "text-brand-muted hover:text-brand-white hover:bg-brand-white/5 border border-transparent"
               )
             }
           >
-            <Icon size={16} />
+            <Icon size={18} className="shrink-0" />
             {label}
           </NavLink>
         ))}
       </nav>
-      <div className="p-3 border-t border-border space-y-2">
+      <div className="p-4 border-t border-brand-border/50 space-y-3">
         {user && (
-          <div className="text-[11px] font-mono text-zinc-400 truncate">{user.email}</div>
+          <div className="px-4 py-2 rounded-xl bg-brand-surface/30">
+            <div className="text-[11px] font-mono text-brand-muted truncate">{user.email}</div>
+          </div>
         )}
         <button
           onClick={logout}
-          className="flex items-center gap-2 w-full px-2 py-1.5 rounded text-xs text-zinc-400 hover:text-zinc-100 hover:bg-bg-surface"
+          className="flex items-center gap-3 w-full px-4 py-3 rounded-xl text-sm font-medium text-brand-muted hover:text-brand-white hover:bg-red-500/10 border border-transparent hover:border-red-500/20 transition-all duration-300"
         >
-          <LogOut size={14} /> Sair
+          <LogOut size={18} />
+          Sair
         </button>
-        <div className="text-[10px] font-mono text-zinc-600 uppercase tracking-wider">
-          v0.1.0
+        <div className="text-center text-[10px] font-mono text-brand-muted/50 uppercase tracking-wider pt-2">
+          v0.1.0 · RIVO Studio
         </div>
       </div>
     </aside>

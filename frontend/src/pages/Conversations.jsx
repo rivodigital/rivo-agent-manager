@@ -10,7 +10,6 @@ import {
   Clock,
   User,
   Bot,
-  ChevronRight,
   XCircle,
   ArrowUpRight,
   CheckCircle,
@@ -23,16 +22,6 @@ const STATUS_OPTIONS = [
   { value: "escalated", label: "Escaladas" },
   { value: "closed", label: "Encerradas" },
 ];
-
-function statusBadgeClass(status) {
-  switch (status) {
-    case "active": return "text-accent border-accent/40 bg-accent/10";
-    case "qualified": return "text-accent-green border-accent-green/40 bg-accent-green/10";
-    case "escalated": return "text-accent-yellow border-accent-yellow/40 bg-accent-yellow/10";
-    case "closed": return "text-zinc-400 border-zinc-600/40 bg-zinc-700/20";
-    default: return "text-zinc-400 border-zinc-600/40 bg-zinc-700/20";
-  }
-}
 
 export default function Conversations() {
   const qc = useQueryClient();
@@ -77,7 +66,6 @@ export default function Conversations() {
     },
   });
 
-  // Client-side search filtering
   const filtered = conversations.filter((c) => {
     if (!search) return true;
     const q = search.toLowerCase();
@@ -89,22 +77,20 @@ export default function Conversations() {
 
   return (
     <div className="flex gap-6 h-[calc(100vh-6rem)]">
-      {/* Left panel: conversation list */}
-      <div className={`flex flex-col ${selectedId ? "w-[420px] shrink-0" : "flex-1"}`}>
-        <header className="mb-4">
-          <h1 className="font-mono text-2xl font-bold uppercase tracking-tight flex items-center gap-3">
-            <MessageSquare size={22} className="text-accent" />
+      <div className={`flex flex-col ${selectedId ? "w-[440px] shrink-0" : "flex-1"}`}>
+        <header className="mb-6">
+          <h1 className="font-sora text-2xl font-bold tracking-tight flex items-center gap-3">
+            <MessageSquare size={24} className="text-brand-accent" />
             Conversas
           </h1>
-          <p className="text-zinc-500 text-sm mt-1">Histórico de conversas WhatsApp</p>
+          <p className="text-brand-muted text-sm mt-1">Histórico de conversas WhatsApp</p>
         </header>
 
-        {/* Filters */}
         <div className="flex gap-3 mb-4 flex-wrap">
           <div className="relative flex-1 min-w-[180px]">
-            <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-zinc-500" />
+            <Search size={16} className="absolute left-4 top-1/2 -translate-y-1/2 text-brand-muted" />
             <input
-              className="input pl-9 w-full"
+              className="input pl-11 w-full"
               placeholder="Buscar por nome ou telefone…"
               value={search}
               onChange={(e) => setSearch(e.target.value)}
@@ -131,54 +117,53 @@ export default function Conversations() {
           </select>
         </div>
 
-        {/* Conversation list */}
-        <div className="flex-1 overflow-y-auto space-y-1 pr-1">
-          {isLoading && <div className="text-zinc-500">carregando…</div>}
+        <div className="flex-1 overflow-y-auto space-y-2 pr-1">
+          {isLoading && <div className="text-brand-muted text-sm text-center py-8">carregando…</div>}
           {!isLoading && filtered.length === 0 && (
-            <div className="text-zinc-500 text-sm py-8 text-center">Nenhuma conversa encontrada.</div>
+            <div className="text-brand-muted text-sm py-8 text-center">Nenhuma conversa encontrada.</div>
           )}
           {filtered.map((c) => (
             <button
               key={c.id}
               onClick={() => setSelectedId(c.id)}
-              className={`w-full text-left p-4 rounded-lg border transition hover:border-accent/30 hover:bg-bg-surface ${
+              className={`w-full text-left p-4 rounded-xl border transition-all duration-300 ${
                 selectedId === c.id
-                  ? "border-accent/50 bg-accent/5"
-                  : "border-border bg-bg-elevated/40"
+                  ? "border-brand-accent/50 bg-brand-accent/5"
+                  : "border-brand-border bg-brand-surface/30 hover:border-brand-white/20"
               }`}
             >
               <div className="flex items-start justify-between">
                 <div className="min-w-0 flex-1">
                   <div className="font-medium text-sm truncate flex items-center gap-2">
-                    <User size={13} className="text-zinc-500 shrink-0" />
+                    <User size={14} className="text-brand-muted shrink-0" />
                     {c.leadName || "Sem nome"}
                   </div>
-                  <div className="text-xs text-zinc-500 mt-0.5 flex items-center gap-1">
-                    <Phone size={11} />
+                  <div className="text-xs text-brand-muted mt-0.5 flex items-center gap-1.5">
+                    <Phone size={12} />
                     {c.leadPhone || c.remoteJid}
                   </div>
                 </div>
-                <div className="flex flex-col items-end gap-1 ml-2 shrink-0">
-                  <span className={`badge text-[10px] ${statusBadgeClass(c.status)}`}>{c.status}</span>
+                <div className="flex flex-col items-end gap-2 ml-3 shrink-0">
+                  <Badge status={c.status}>{c.status}</Badge>
                   {c.qualificationScore != null && (
-                    <span className="text-[10px] font-mono text-accent-green">{c.qualificationScore}pts</span>
+                    <span className="text-[10px] font-mono text-brand-accent">{c.qualificationScore}pts</span>
                   )}
                 </div>
               </div>
-              <div className="flex items-center justify-between mt-2">
-                <div className="text-[11px] text-zinc-500 flex items-center gap-1 truncate">
-                  <Bot size={11} />
+              <div className="flex items-center justify-between mt-3">
+                <div className="text-[11px] text-brand-muted flex items-center gap-1.5 truncate">
+                  <Bot size={12} />
                   {c.agent?.name}
-                  {c.agent?.client && <span className="text-zinc-600"> · {c.agent.client.name}</span>}
+                  {c.agent?.client && <span className="text-brand-muted/50"> · {c.agent.client.name}</span>}
                 </div>
-                <div className="text-[10px] font-mono text-zinc-600 flex items-center gap-1 shrink-0">
+                <div className="text-[10px] font-mono text-brand-muted/50 flex items-center gap-1 shrink-0">
                   <Clock size={10} />
                   {new Date(c.lastMessageAt).toLocaleString("pt-BR", {
                     day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit",
                   })}
                 </div>
               </div>
-              <div className="text-[11px] text-zinc-600 mt-1">
+              <div className="text-[11px] text-brand-muted/50 mt-1.5">
                 {c._count?.messages || 0} mensagens
               </div>
             </button>
@@ -186,24 +171,20 @@ export default function Conversations() {
         </div>
       </div>
 
-      {/* Right panel: conversation detail */}
       {selectedId && (
         <div className="flex-1 flex flex-col card overflow-hidden">
           {!detail ? (
-            <div className="flex-1 flex items-center justify-center text-zinc-500">carregando…</div>
+            <div className="flex-1 flex items-center justify-center text-brand-muted">carregando…</div>
           ) : (
             <>
-              {/* Header */}
-              <div className="flex items-center justify-between px-5 py-4 border-b border-border">
+              <div className="flex items-center justify-between px-6 py-4 border-b border-brand-border/50">
                 <div className="min-w-0">
                   <div className="font-medium flex items-center gap-2 text-sm">
-                    <User size={14} className="text-zinc-400" />
+                    <User size={16} className="text-brand-muted" />
                     {detail.leadName || "Sem nome"}
-                    <span className={`badge ml-2 text-[10px] ${statusBadgeClass(detail.status)}`}>
-                      {detail.status}
-                    </span>
+                    <Badge status={detail.status} className="ml-2">{detail.status}</Badge>
                   </div>
-                  <div className="text-xs text-zinc-500 mt-0.5">
+                  <div className="text-xs text-brand-muted mt-1">
                     {detail.leadPhone || detail.remoteJid}
                     {detail.agent && <> · {detail.agent.name}</>}
                     {detail.agent?.client && <> · {detail.agent.client.name}</>}
@@ -213,53 +194,49 @@ export default function Conversations() {
                   {detail.status !== "closed" && (
                     <>
                       <button
-                        className="btn text-xs"
+                        className="btn text-xs py-2"
                         onClick={() => updateConv.mutate({ id: detail.id, data: { status: "qualified" } })}
-                        title="Marcar como qualificado"
                       >
-                        <CheckCircle size={13} className="text-accent-green" />
+                        <CheckCircle size={14} className="text-brand-accent" />
                         Qualificar
                       </button>
                       <button
-                        className="btn text-xs"
+                        className="btn text-xs py-2"
                         onClick={() => updateConv.mutate({ id: detail.id, data: { status: "escalated" } })}
-                        title="Escalar para humano"
                       >
-                        <ArrowUpRight size={13} className="text-accent-yellow" />
+                        <ArrowUpRight size={14} className="text-yellow-500" />
                         Escalar
                       </button>
                       <button
-                        className="btn text-xs"
+                        className="btn text-xs py-2"
                         onClick={() => closeConv.mutate(detail.id)}
-                        title="Fechar conversa"
                       >
-                        <XCircle size={13} className="text-accent-red" />
+                        <XCircle size={14} className="text-red-500" />
                         Fechar
                       </button>
                     </>
                   )}
-                  <button onClick={() => setSelectedId(null)} className="text-zinc-500 hover:text-zinc-100 ml-2">
-                    <X size={18} />
+                  <button onClick={() => setSelectedId(null)} className="text-brand-muted hover:text-brand-white transition ml-2">
+                    <X size={20} />
                   </button>
                 </div>
               </div>
 
-              {/* Messages */}
-              <div className="flex-1 overflow-y-auto p-5 space-y-3">
+              <div className="flex-1 overflow-y-auto p-5 space-y-4">
                 {detail.messages?.map((m) => (
                   <div
                     key={m.id}
                     className={`flex ${m.role === "user" ? "justify-start" : "justify-end"}`}
                   >
                     <div
-                      className={`max-w-[75%] rounded-xl px-4 py-2.5 ${
+                      className={`max-w-[75%] rounded-2xl px-5 py-3 ${
                         m.role === "user"
-                          ? "bg-bg-surface border border-border"
-                          : "bg-accent/10 border border-accent/30"
+                          ? "bg-brand-surface border border-brand-border"
+                          : "bg-brand-accent/10 border border-brand-accent/30"
                       }`}
                     >
-                      <p className="text-sm text-zinc-200 whitespace-pre-wrap">{m.content}</p>
-                      <div className="text-[10px] font-mono text-zinc-500 mt-1 text-right">
+                      <p className="text-sm text-brand-white/90 whitespace-pre-wrap">{m.content}</p>
+                      <div className="text-[10px] font-mono text-brand-muted/60 mt-2 text-right">
                         {new Date(m.createdAt).toLocaleTimeString("pt-BR", {
                           hour: "2-digit", minute: "2-digit",
                         })}
@@ -268,26 +245,25 @@ export default function Conversations() {
                   </div>
                 ))}
                 {(!detail.messages || detail.messages.length === 0) && (
-                  <div className="text-zinc-500 text-sm text-center py-8">Sem mensagens.</div>
+                  <div className="text-brand-muted text-sm text-center py-12">Sem mensagens.</div>
                 )}
               </div>
 
-              {/* Qualification data footer */}
               {detail.qualificationData && (
-                <div className="border-t border-border px-5 py-3">
-                  <div className="text-[10px] font-mono uppercase tracking-wider text-zinc-500 mb-2">
+                <div className="border-t border-brand-border/50 px-6 py-4">
+                  <div className="text-[11px] font-mono uppercase tracking-wider text-brand-muted mb-3">
                     Dados de Qualificação
                     {detail.qualificationScore != null && (
-                      <span className="text-accent-green ml-2">Score: {detail.qualificationScore}</span>
+                      <span className="text-brand-accent ml-3">Score: {detail.qualificationScore}</span>
                     )}
                   </div>
-                  <div className="grid grid-cols-2 gap-2 text-xs text-zinc-400">
+                  <div className="grid grid-cols-2 gap-3 text-xs text-brand-muted">
                     {(() => {
                       try {
                         const d = JSON.parse(detail.qualificationData);
                         return Object.entries(d).map(([k, v]) => (
                           <div key={k}>
-                            <span className="text-zinc-500 capitalize">{k}:</span> {v}
+                            <span className="text-brand-muted/60 capitalize">{k}:</span> {v}
                           </div>
                         ));
                       } catch { return null; }
@@ -300,12 +276,11 @@ export default function Conversations() {
         </div>
       )}
 
-      {/* Empty state when nothing selected */}
       {!selectedId && conversations.length > 0 && (
-        <div className="hidden lg:flex flex-1 items-center justify-center text-zinc-600">
+        <div className="hidden lg:flex flex-1 items-center justify-center">
           <div className="text-center">
-            <MessageSquare size={40} className="mx-auto mb-3 opacity-30" />
-            <p className="text-sm">Selecione uma conversa para ver o histórico</p>
+            <MessageSquare size={48} className="text-brand-muted/20 mx-auto mb-4" />
+            <p className="text-brand-muted text-sm">Selecione uma conversa para ver o histórico</p>
           </div>
         </div>
       )}

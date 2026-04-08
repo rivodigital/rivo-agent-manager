@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { Navigate, useNavigate } from "react-router-dom";
 import { useAuth } from "../lib/auth.jsx";
+import { Bot, Lock, Mail } from "lucide-react";
 
 export default function Login() {
   const { login, user, loading } = useAuth();
@@ -28,47 +29,76 @@ export default function Login() {
   }
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gray-50">
-      <form
-        onSubmit={onSubmit}
-        className="w-full max-w-sm bg-white p-8 rounded-lg shadow space-y-4"
-      >
-        <h1 className="text-2xl font-bold text-center">Rivo Agent Manager</h1>
-        <p className="text-sm text-gray-500 text-center">Entre com suas credenciais</p>
-
-        <div>
-          <label className="block text-sm font-medium mb-1">Email</label>
-          <input
-            type="email"
-            required
-            value={email}
-            onChange={(e) => setEmail(e.target.value)}
-            className="w-full border rounded px-3 py-2"
-            autoFocus
-          />
+    <div className="min-h-screen flex items-center justify-center bg-brand-black relative overflow-hidden">
+      <div className="absolute inset-0 pointer-events-none">
+        <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[800px] h-[800px] bg-brand-accent/[0.03] rounded-full blur-[200px]"></div>
+        <div className="absolute top-[20%] right-[10%] w-64 h-64 border border-brand-white/[0.04] rounded-full"></div>
+        <div className="absolute bottom-[30%] left-[15%] w-32 h-32 border border-brand-white/[0.03]" style="border-radius: 30% 70% 70% 30% / 30% 30% 70% 70%"></div>
+      </div>
+      
+      <div className="relative z-10 w-full max-w-md px-6">
+        <div className="text-center mb-10">
+          <div className="w-16 h-16 rounded-2xl bg-brand-accent/10 border border-brand-accent/20 flex items-center justify-center mx-auto mb-4">
+            <Bot size={28} className="text-brand-accent" />
+          </div>
+          <h1 className="font-sora text-3xl font-bold tracking-tight">RIVO<span className="text-brand-accent">.</span></h1>
+          <p className="text-brand-muted text-sm mt-2">Agent Manager</p>
         </div>
 
-        <div>
-          <label className="block text-sm font-medium mb-1">Senha</label>
-          <input
-            type="password"
-            required
-            value={password}
-            onChange={(e) => setPassword(e.target.value)}
-            className="w-full border rounded px-3 py-2"
-          />
-        </div>
-
-        {err && <div className="text-sm text-red-600">{err}</div>}
-
-        <button
-          type="submit"
-          disabled={submitting}
-          className="w-full bg-black text-white rounded py-2 disabled:opacity-50"
+        <form
+          onSubmit={onSubmit}
+          className="card p-8 space-y-6"
         >
-          {submitting ? "Entrando..." : "Entrar"}
-        </button>
-      </form>
+          <div>
+            <label className="label">Email</label>
+            <div className="relative">
+              <Mail size={16} className="absolute left-4 top-1/2 -translate-y-1/2 text-brand-muted" />
+              <input
+                type="email"
+                required
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                className="input pl-11"
+                placeholder="seu@email.com"
+                autoFocus
+              />
+            </div>
+          </div>
+
+          <div>
+            <label className="label">Senha</label>
+            <div className="relative">
+              <Lock size={16} className="absolute left-4 top-1/2 -translate-y-1/2 text-brand-muted" />
+              <input
+                type="password"
+                required
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                className="input pl-11"
+                placeholder="••••••••"
+              />
+            </div>
+          </div>
+
+          {err && (
+            <div className="text-sm text-red-500 bg-red-500/10 border border-red-500/20 rounded-xl px-4 py-3">
+              {err}
+            </div>
+          )}
+
+          <button
+            type="submit"
+            disabled={submitting}
+            className="btn btn-primary w-full"
+          >
+            {submitting ? "Entrando..." : "Entrar"}
+          </button>
+        </form>
+
+        <p className="text-center text-[11px] font-mono text-brand-muted/50 mt-6 uppercase tracking-wider">
+          RIVO Studio · 2024
+        </p>
+      </div>
     </div>
   );
 }

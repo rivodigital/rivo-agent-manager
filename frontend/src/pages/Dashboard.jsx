@@ -13,15 +13,16 @@ import {
   Phone,
   UserCheck,
   Clock,
+  ArrowRight,
 } from "lucide-react";
 
 function statusBadgeClass(status) {
   switch (status) {
-    case "active": return "text-accent border-accent/40 bg-accent/10";
-    case "qualified": return "text-accent-green border-accent-green/40 bg-accent-green/10";
-    case "escalated": return "text-accent-yellow border-accent-yellow/40 bg-accent-yellow/10";
-    case "closed": return "text-zinc-400 border-zinc-600/40 bg-zinc-700/20";
-    default: return "text-zinc-400 border-zinc-600/40 bg-zinc-700/20";
+    case "active": return "badge-success";
+    case "qualified": return "badge-success";
+    case "escalated": return "badge-warning";
+    case "closed": return "badge-neutral";
+    default: return "badge-neutral";
   }
 }
 
@@ -31,7 +32,11 @@ export default function Dashboard() {
     queryFn: () => get("/dashboard/stats"),
   });
 
-  if (isLoading) return <div className="text-zinc-500">carregando…</div>;
+  if (isLoading) return (
+    <div className="flex items-center justify-center h-64">
+      <div className="text-brand-muted text-sm">carregando…</div>
+    </div>
+  );
   if (!data) return null;
 
   const stats = [
@@ -50,55 +55,64 @@ export default function Dashboard() {
   ];
 
   return (
-    <div className="space-y-8">
-      <header>
-        <h1 className="font-mono text-2xl font-bold uppercase tracking-tight">Mission Control</h1>
-        <p className="text-zinc-500 text-sm mt-1">Visão geral dos agentes em operação.</p>
+    <div className="space-y-10">
+      <header className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+        <div>
+          <h1 className="font-sora text-3xl font-bold tracking-tight">Mission Control</h1>
+          <p className="text-brand-muted text-sm mt-1">Visão geral dos agentes em operação.</p>
+        </div>
+        <Link to="/agents" className="btn btn-outline w-fit">
+          <Bot size={16} />
+          Novo Agente
+        </Link>
       </header>
 
-      {/* Plataforma stats */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
         {stats.map(({ label, value, icon: Icon }) => (
-          <div key={label} className="card p-5">
+          <div key={label} className="stat-card group">
             <div className="flex items-center justify-between">
-              <div className="text-[10px] font-mono uppercase tracking-widest text-zinc-500">{label}</div>
-              <Icon size={16} className="text-accent" />
+              <div className="stat-label">{label}</div>
+              <div className="w-10 h-10 rounded-xl bg-brand-accent/5 border border-brand-accent/10 flex items-center justify-center group-hover:bg-brand-accent/10 transition-colors">
+                <Icon size={18} className="text-brand-accent" />
+              </div>
             </div>
-            <div className="text-3xl font-mono font-bold mt-3">{value}</div>
+            <div className="stat-value">{value}</div>
           </div>
         ))}
       </div>
 
-      {/* WhatsApp stats */}
       <section>
-        <h2 className="font-mono text-xs uppercase tracking-wider mb-3 text-zinc-400 flex items-center gap-2">
-          <Phone size={13} className="text-accent-green" />
-          WhatsApp
-        </h2>
+        <div className="flex items-center gap-3 mb-4">
+          <div className="w-8 h-8 rounded-lg bg-green-500/10 border border-green-500/20 flex items-center justify-center">
+            <Phone size={14} className="text-green-500" />
+          </div>
+          <h2 className="font-sora text-sm font-semibold uppercase tracking-[0.1em] text-brand-muted">
+            WhatsApp
+          </h2>
+        </div>
         <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
           {waStats.map(({ label, value, sub, icon: Icon }) => (
-            <div key={label} className="card p-5">
+            <div key={label} className="stat-card">
               <div className="flex items-center justify-between">
-                <div className="text-[10px] font-mono uppercase tracking-widest text-zinc-500">{label}</div>
-                <Icon size={16} className="text-accent-green" />
+                <div className="stat-label">{label}</div>
+                <Icon size={16} className="text-green-500" />
               </div>
-              <div className="text-3xl font-mono font-bold mt-3">{value}</div>
-              {sub && <div className="text-[10px] font-mono text-zinc-500 mt-1">{sub}</div>}
+              <div className="stat-value">{value}</div>
+              {sub && <div className="text-[11px] font-mono text-brand-muted mt-1">{sub}</div>}
             </div>
           ))}
         </div>
       </section>
 
-      {/* Alerts */}
       {data.alerts?.length > 0 && (
-        <section className="card p-5">
-          <div className="flex items-center gap-2 mb-3">
-            <AlertTriangle size={16} className="text-accent-yellow" />
-            <h2 className="font-mono text-xs uppercase tracking-wider">Alertas</h2>
+        <section className="card p-6">
+          <div className="flex items-center gap-3 mb-4">
+            <AlertTriangle size={18} className="text-yellow-500" />
+            <h2 className="font-sora text-sm font-semibold uppercase tracking-[0.1em]">Alertas</h2>
           </div>
-          <ul className="space-y-2">
+          <ul className="space-y-3">
             {data.alerts.map((a, i) => (
-              <li key={i} className="text-sm text-zinc-300 border-l-2 border-accent-yellow pl-3">
+              <li key={i} className="flex items-start gap-3 text-sm text-brand-muted border-l-2 border-yellow-500/40 pl-4">
                 {a.message}
               </li>
             ))}
@@ -106,21 +120,26 @@ export default function Dashboard() {
         </section>
       )}
 
-      {/* Two-column layout for recent agents and conversations */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        {/* Recent Agents */}
-        <section className="card p-5">
-          <h2 className="font-mono text-xs uppercase tracking-wider mb-4 text-zinc-400">Agentes Recentes</h2>
+        <section className="card p-6">
+          <div className="flex items-center justify-between mb-6">
+            <h2 className="font-sora text-sm font-semibold uppercase tracking-[0.1em] text-brand-muted">
+              Agentes Recentes
+            </h2>
+            <Link to="/agents" className="text-[11px] font-mono text-brand-accent hover:text-brand-accent/80 transition flex items-center gap-1">
+              Ver todos <ArrowRight size={12} />
+            </Link>
+          </div>
           <div className="space-y-2">
             {data.recentAgents.map((a) => (
               <Link
                 to={`/agents/${a.id}`}
                 key={a.id}
-                className="flex items-center justify-between p-3 rounded-md hover:bg-bg-surface transition border border-transparent hover:border-border"
+                className="flex items-center justify-between p-4 rounded-xl hover:bg-brand-surface/50 transition border border-transparent hover:border-brand-border/50"
               >
                 <div>
-                  <div className="font-medium">{a.name}</div>
-                  <div className="text-xs text-zinc-500 mt-0.5">
+                  <div className="font-medium text-sm">{a.name}</div>
+                  <div className="text-xs text-brand-muted mt-0.5">
                     {a.client.name} · {a.provider.label} · {a.model}
                   </div>
                 </div>
@@ -131,17 +150,21 @@ export default function Dashboard() {
               </Link>
             ))}
             {data.recentAgents.length === 0 && (
-              <div className="text-zinc-500 text-sm">Nenhum agente cadastrado.</div>
+              <div className="text-center py-8">
+                <Bot size={32} className="text-brand-muted/30 mx-auto mb-2" />
+                <p className="text-brand-muted text-sm">Nenhum agente cadastrado.</p>
+              </div>
             )}
           </div>
         </section>
 
-        {/* Recent Conversations */}
-        <section className="card p-5">
-          <div className="flex items-center justify-between mb-4">
-            <h2 className="font-mono text-xs uppercase tracking-wider text-zinc-400">Conversas Recentes</h2>
-            <Link to="/conversations" className="text-xs text-accent hover:text-accent/80 transition">
-              Ver todas →
+        <section className="card p-6">
+          <div className="flex items-center justify-between mb-6">
+            <h2 className="font-sora text-sm font-semibold uppercase tracking-[0.1em] text-brand-muted">
+              Conversas Recentes
+            </h2>
+            <Link to="/conversations" className="text-[11px] font-mono text-brand-accent hover:text-brand-accent/80 transition flex items-center gap-1">
+              Ver todas <ArrowRight size={12} />
             </Link>
           </div>
           <div className="space-y-2">
@@ -149,21 +172,21 @@ export default function Dashboard() {
               <Link
                 to="/conversations"
                 key={c.id}
-                className="flex items-center justify-between p-3 rounded-md hover:bg-bg-surface transition border border-transparent hover:border-border"
+                className="flex items-center justify-between p-4 rounded-xl hover:bg-brand-surface/50 transition border border-transparent hover:border-brand-border/50"
               >
                 <div className="min-w-0 flex-1">
                   <div className="font-medium text-sm flex items-center gap-2">
-                    <MessageSquare size={13} className="text-zinc-500 shrink-0" />
+                    <MessageSquare size={14} className="text-brand-muted shrink-0" />
                     {c.leadName || "Sem nome"}
                   </div>
-                  <div className="text-xs text-zinc-500 mt-0.5 truncate">
+                  <div className="text-xs text-brand-muted mt-0.5 truncate">
                     {c.agent?.name}
                     {c.agent?.client && <> · {c.agent.client.name}</>}
                   </div>
                 </div>
-                <div className="flex flex-col items-end gap-1 ml-2 shrink-0">
-                  <span className={`badge text-[10px] ${statusBadgeClass(c.status)}`}>{c.status}</span>
-                  <span className="text-[10px] font-mono text-zinc-600">
+                <div className="flex flex-col items-end gap-2 ml-4 shrink-0">
+                  <span className={`badge ${statusBadgeClass(c.status)}`}>{c.status}</span>
+                  <span className="text-[10px] font-mono text-brand-muted/60">
                     {new Date(c.lastMessageAt).toLocaleString("pt-BR", {
                       day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit",
                     })}
@@ -172,7 +195,10 @@ export default function Dashboard() {
               </Link>
             ))}
             {(!data.recentConversations || data.recentConversations.length === 0) && (
-              <div className="text-zinc-500 text-sm">Nenhuma conversa ainda.</div>
+              <div className="text-center py-8">
+                <MessageSquare size={32} className="text-brand-muted/30 mx-auto mb-2" />
+                <p className="text-brand-muted text-sm">Nenhuma conversa ainda.</p>
+              </div>
             )}
           </div>
         </section>

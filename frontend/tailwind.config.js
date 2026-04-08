@@ -5,25 +5,41 @@ export default {
   theme: {
     extend: {
       colors: {
-        bg: {
-          DEFAULT: "#0a0a0f",
-          elevated: "#12121a",
-          surface: "#1a1a24",
-        },
-        border: {
-          DEFAULT: "#222230",
-          strong: "#2e2e3e",
-        },
-        accent: {
-          DEFAULT: "#3b82f6",
-          green: "#22c55e",
-          yellow: "#eab308",
-          red: "#ef4444",
+        brand: {
+          black: "#0a0a0f",
+          white: "#ffffff",
+          accent: "#4ade80",
+          muted: "#71717a",
+          dark: "#09090b",
+          surface: "#111114",
+          border: "rgba(255,255,255,0.06)",
         },
       },
       fontFamily: {
+        sora: ['"Sora"', "system-ui", "sans-serif"],
         mono: ['"JetBrains Mono"', '"Fira Code"', "ui-monospace", "monospace"],
-        sans: ['"Inter"', "system-ui", "sans-serif"],
+      },
+      backdropBlur: {
+        xs: "2px",
+      },
+      animation: {
+        "marquee": "marquee 30s linear infinite",
+        "fade-in": "fadeIn 0.5s ease-out forwards",
+        "slide-up": "slideUp 0.6s ease-out forwards",
+      },
+      keyframes: {
+        marquee: {
+          "0%": { transform: "translateX(0%)" },
+          "100%": { transform: "translateX(-50%)" },
+        },
+        fadeIn: {
+          "0%": { opacity: "0" },
+          "100%": { opacity: "1" },
+        },
+        slideUp: {
+          "0%": { opacity: "0", transform: "translateY(20px)" },
+          "100%": { opacity: "1", transform: "translateY(0)" },
+        },
       },
     },
   },
