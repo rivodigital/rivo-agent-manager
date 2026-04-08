@@ -22,7 +22,7 @@ echo "[deploy] removendo containers antigos de backend/frontend (labels divergen
 docker rm -f rivo-backend rivo-frontend 2>/dev/null || true
 
 echo "[deploy] docker compose build + up"
-docker compose -f docker-compose.prod.yml up -d --build backend frontend
+docker compose -p rivo-agent-manager -f docker-compose.prod.yml up -d --build backend frontend
 
 echo "[deploy] removendo stack órfã 'repo' criada por execução anterior"
 docker network rm repo_rivo-network 2>/dev/null || true
