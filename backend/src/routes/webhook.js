@@ -2,7 +2,7 @@ import { Router } from "express";
 import { prisma } from "../db.js";
 import { processIncomingMessage } from "../services/conversation-manager.js";
 import { sendText, jidToNumber, stripDataUrl, getMediaBase64 } from "../services/evolution.js";
-import { transcribeAudio } from "../services/transcribe.js";
+import { transcribeAudio, analyzeImage } from "../services/transcribe.js";
 
 const r = Router();
 
@@ -194,6 +194,28 @@ r.post(["/", "/*"], (req, res) => {
         if (messageType === "reaction") {
           console.log(`[webhook] reação ignorada de ${remoteJid}`);
           return;
+        }
+
+        // Imagem: baixar do Evolution e descrever via Gemini (multimodal)
+        if (messageType === "image") {
+          try {
+            const img = data.message?.imageMessage;
+            const mimetype = img?.mimetype || "image/jpeg";
+            const caption = img?.caption || "";
+            const { base64 } = await getMediaBase64(instanceName, data);
+            if (!base64) throw new Error("base64 vazio");
+            const described = await analyzeImage({ base64, mimetype, caption });
+            console.log(`[webhook] imagem analisada (${described.length} chars)`);
+            text = described || "";
+            messageType = "text";
+          } catch (err) {
+            console.error(
+              "[webhook] falha ao analisar imagem:",
+              err.message || err,
+              err.response?.status,
+              JSON.stringify(err.response?.data)?.slice(0, 300)
+            );
+          }
         }
 
         // Áudio: baixar do Evolution e transcrever via Gemini
