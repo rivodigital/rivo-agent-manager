@@ -69,6 +69,17 @@ export async function sendText(instanceName, number, text) {
 }
 
 // Converte remoteJid "5547999999999@s.whatsapp.net" → "5547999999999"
+// Baixa o conteúdo binário (base64) de uma mensagem de mídia (áudio, imagem, etc)
+// `messagePayload` é o `data` que veio no webhook messages.upsert
+export async function getMediaBase64(instanceName, messagePayload) {
+  const { data } = await client().post(
+    `/chat/getBase64FromMediaMessage/${instanceName}`,
+    { message: messagePayload, convertToMp4: false }
+  );
+  // Evolution retorna { base64, mimetype, ... }
+  return { base64: stripDataUrl(data?.base64), mimetype: data?.mimetype || "audio/ogg" };
+}
+
 export function jidToNumber(jid) {
   if (!jid) return null;
   return String(jid).split("@")[0];

@@ -1,7 +1,8 @@
 import { Router } from "express";
 import { prisma } from "../db.js";
 import { processIncomingMessage } from "../services/conversation-manager.js";
-import { sendText, jidToNumber, stripDataUrl } from "../services/evolution.js";
+import { sendText, jidToNumber, stripDataUrl, getMediaBase64 } from "../services/evolution.js";
+import { transcribeAudio } from "../services/transcribe.js";
 
 const r = Router();
 
@@ -79,12 +80,14 @@ function extractText(data) {
 
 function detectMessageType(data) {
   const msg = data.message || {};
+  if (msg.reactionMessage) return "reaction";
   if (msg.conversation || msg.extendedTextMessage) return "text";
   const raw = data.messageType;
+  if (raw === "reactionMessage") return "reaction";
   if (raw === "conversation" || raw === "extendedTextMessage") return "text";
+  if (raw === "audioMessage" || msg.audioMessage) return "audio";
   if (raw) return raw;
   if (msg.imageMessage) return "image";
-  if (msg.audioMessage) return "audio";
   if (msg.documentMessage) return "document";
   if (msg.stickerMessage) return "sticker";
   if (msg.videoMessage) return "video";
@@ -150,10 +153,33 @@ r.post(["/", "/*"], (req, res) => {
         });
         if (!agent || agent.status !== "active") return;
 
-        const messageType = detectMessageType(data);
-        const text = extractText(data);
+        let messageType = detectMessageType(data);
+        let text = extractText(data);
         const pushName = data.pushName || null;
         const whatsappMsgId = key.id || null;
+
+        // Reações: ignorar silenciosamente (não responder nada)
+        if (messageType === "reaction") {
+          console.log(`[webhook] reação ignorada de ${remoteJid}`);
+          return;
+        }
+
+        // Áudio: baixar do Evolution e transcrever via Gemini
+        if (messageType === "audio") {
+          try {
+            const audio = data.message?.audioMessage;
+            const mimetype = audio?.mimetype || "audio/ogg";
+            const { base64 } = await getMediaBase64(instanceName, data);
+            if (!base64) throw new Error("base64 vazio");
+            const transcribed = await transcribeAudio({ base64, mimetype });
+            console.log(`[webhook] áudio transcrito (${transcribed.length} chars)`);
+            text = transcribed || "";
+            messageType = "text";
+          } catch (err) {
+            console.error("[webhook] falha ao transcrever áudio:", err.message || err);
+            // Mantém messageType=audio → o conversation-manager responde a mensagem padrão
+          }
+        }
 
         bufferMessage({
           agent,
