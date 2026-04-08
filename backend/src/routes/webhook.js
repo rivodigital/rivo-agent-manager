@@ -112,8 +112,11 @@ function detectMessageType(data) {
   if (raw === "reactionMessage") return "reaction";
   if (raw === "conversation" || raw === "extendedTextMessage") return "text";
   if (raw === "audioMessage" || msg.audioMessage) return "audio";
+  if (raw === "imageMessage" || msg.imageMessage) return "image";
+  if (raw === "videoMessage" || msg.videoMessage) return "video";
+  if (raw === "documentMessage" || msg.documentMessage) return "document";
+  if (raw === "stickerMessage" || msg.stickerMessage) return "sticker";
   if (raw) return raw;
-  if (msg.imageMessage) return "image";
   if (msg.documentMessage) return "document";
   if (msg.stickerMessage) return "sticker";
   if (msg.videoMessage) return "video";
