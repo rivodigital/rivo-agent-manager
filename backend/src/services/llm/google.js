@@ -59,8 +59,12 @@ export async function chat({ apiKey, model, systemPrompt, messages, temperature 
     .join("\n")
     .trim();
 
-  if (!text && candidate?.finishReason === "SAFETY") {
-    throw new Error("google: resposta bloqueada por filtro de segurança");
+  if (!text) {
+    const reason = candidate?.finishReason || "unknown";
+    console.warn(`[google] resposta vazia finishReason=${reason} model=${model}`);
+    if (reason === "SAFETY") throw new Error("google: resposta bloqueada por filtro de segurança");
+    if (reason === "RECITATION") throw new Error("google: resposta bloqueada por RECITATION");
+    if (reason === "MAX_TOKENS") throw new Error("google: resposta cortada por MAX_TOKENS");
   }
 
   return {
