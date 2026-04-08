@@ -18,8 +18,14 @@ echo "[deploy] === iniciando $(date -u +%FT%TZ) ==="
 echo "[deploy] git pull"
 git pull --ff-only origin main
 
+echo "[deploy] removendo containers antigos de backend/frontend (labels divergentes)"
+docker rm -f rivo-backend rivo-frontend 2>/dev/null || true
+
 echo "[deploy] docker compose build + up"
 docker compose -f docker-compose.prod.yml up -d --build backend frontend
+
+echo "[deploy] removendo stack órfã 'repo' criada por execução anterior"
+docker network rm repo_rivo-network 2>/dev/null || true
 
 echo "[deploy] limpando imagens antigas"
 docker image prune -f >/dev/null 2>&1 || true
