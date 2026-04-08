@@ -34,8 +34,6 @@ services:
     build:
       context: ./frontend
       dockerfile: Dockerfile
-      args:
-        VITE_AUTH_TOKEN: ${AUTH_TOKEN}
     image: rivo-frontend:latest
     container_name: rivo-frontend
     restart: unless-stopped
@@ -53,7 +51,8 @@ services:
       NODE_ENV: production
       PORT: 3001
       DATABASE_URL: file:/app/prisma/data/dev.db
-      AUTH_TOKEN: ${AUTH_TOKEN}
+      JWT_SECRET: ${JWT_SECRET}
+      JWT_EXPIRES_IN: ${JWT_EXPIRES_IN:-7d}
       EVOLUTION_API_URL: http://evolution-api:8080
       EVOLUTION_API_KEY: ${EVOLUTION_API_KEY}
       WEBHOOK_GLOBAL_URL: ${WEBHOOK_GLOBAL_URL}

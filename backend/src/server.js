@@ -11,6 +11,7 @@ import dashboard from "./routes/dashboard.js";
 import webhook from "./routes/webhook.js";
 import whatsapp from "./routes/whatsapp.js";
 import conversations, { conversationsByAgent } from "./routes/conversations.js";
+import authRoutes from "./routes/auth.js";
 
 const app = express();
 app.use(cors());
@@ -22,10 +23,14 @@ app.get("/health", (_req, res) => res.json({ ok: true }));
 // Handle all sub-paths under /api/webhook/evolution
 app.use("/api/webhook/evolution", webhook);
 
+// Public auth routes (login)
+app.use("/api/auth", authRoutes);
+
 // Auth middleware for all other /api routes
 app.use("/api", (req, res, next) => {
   // Extra safety: never auth the webhook route even if mount order is swapped
   if (req.path.startsWith("/webhook/evolution")) return next();
+  if (req.path.startsWith("/auth/login")) return next();
   auth(req, res, next);
 });
 app.use("/api/providers", providers);

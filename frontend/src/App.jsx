@@ -1,5 +1,7 @@
 import { Routes, Route, Navigate } from "react-router-dom";
 import Layout from "./components/layout/Layout.jsx";
+import ProtectedRoute from "./components/ProtectedRoute.jsx";
+import Login from "./pages/Login.jsx";
 import Dashboard from "./pages/Dashboard.jsx";
 import Clients from "./pages/Clients.jsx";
 import ClientDetail from "./pages/ClientDetail.jsx";
@@ -11,7 +13,14 @@ import Conversations from "./pages/Conversations.jsx";
 export default function App() {
   return (
     <Routes>
-      <Route element={<Layout />}>
+      <Route path="/login" element={<Login />} />
+      <Route
+        element={
+          <ProtectedRoute>
+            <Layout />
+          </ProtectedRoute>
+        }
+      >
         <Route index element={<Dashboard />} />
         <Route path="clients" element={<Clients />} />
         <Route path="clients/:id" element={<ClientDetail />} />

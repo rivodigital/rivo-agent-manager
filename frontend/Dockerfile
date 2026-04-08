@@ -9,10 +9,6 @@ RUN npm install
 
 COPY . .
 
-# Build arg pro token de autenticação (vira variável Vite no bundle)
-ARG VITE_AUTH_TOKEN
-ENV VITE_AUTH_TOKEN=$VITE_AUTH_TOKEN
-
 RUN npm run build
 
 # ---- Stage 2: nginx serve ----

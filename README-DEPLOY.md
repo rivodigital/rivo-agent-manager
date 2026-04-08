@@ -89,7 +89,7 @@ DOMAIN=agente.rivos.me
 ACME_EMAIL=seu-email@rivos.me
 
 # Gere com: openssl rand -hex 32
-AUTH_TOKEN=...
+JWT_SECRET=...
 EVOLUTION_API_KEY=...
 POSTGRES_EVOLUTION_PASSWORD=...
 
@@ -100,7 +100,7 @@ MESSAGE_BUFFER_SECONDS=3
 CONVERSATION_HISTORY_LIMIT=20
 ```
 
-> ⚠️ **Importante**: o `AUTH_TOKEN` precisa bater com o token hardcoded no frontend (`frontend/src/lib/api.js`, linha 5: `Bearer rivo-dev-token-2026`). Ou você atualiza o frontend pra usar o mesmo valor do `.env`, ou cola `rivo-dev-token-2026` no `AUTH_TOKEN`. **Recomendo trocar pra um valor forte e atualizar o frontend.**
+> O acesso ao painel é via login (email + senha). O `JWT_SECRET` é o que assina os tokens de sessão — gere um valor forte e nunca compartilhe.
 
 ---
 
@@ -121,6 +121,20 @@ O Caddy automaticamente vai pegar um certificado HTTPS do Let's Encrypt na prime
 ```
 https://agente.rivos.me
 ```
+
+---
+
+## 6.1 Criar o primeiro usuário admin
+
+Antes de conseguir logar no painel, crie um usuário direto pelo container do backend:
+
+```bash
+docker compose -f docker-compose.prod.yml exec backend npm run user:create
+```
+
+Vai perguntar email, nome e senha (mínimo 8 caracteres). Depois é só acessar `https://agente.rivos.me` e logar.
+
+Pra criar mais usuários depois, basta rodar o mesmo comando.
 
 ---
 
