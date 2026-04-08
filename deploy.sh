@@ -9,6 +9,10 @@ set -e
 
 cd /repo
 
+# Força o mesmo project name usado quando se sobe manualmente do host
+# (senão o compose usa "repo" e cria uma stack paralela em conflito)
+export COMPOSE_PROJECT_NAME=rivo-agent-manager
+
 echo "[deploy] === iniciando $(date -u +%FT%TZ) ==="
 
 echo "[deploy] git pull"
