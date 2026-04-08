@@ -13,6 +13,23 @@ const MESSAGE_BUFFER_SECONDS = parseInt(process.env.MESSAGE_BUFFER_SECONDS || "3
 // ---------------------------------------------------------------------------
 const pendingByConv = new Map();
 
+// Dedupe global de whatsappMsgId (Evolution entrega o mesmo evento em / e /messages-upsert,
+// e transcrição de áudio pode levar 10-20s, estourando o buffer de flush)
+const recentMsgIds = new Map(); // id → expiresAt
+const MSG_ID_TTL_MS = 5 * 60 * 1000;
+
+function seenMsgId(id) {
+  if (!id) return false;
+  const now = Date.now();
+  // Limpa expirados oportunisticamente
+  if (recentMsgIds.size > 500) {
+    for (const [k, exp] of recentMsgIds) if (exp < now) recentMsgIds.delete(k);
+  }
+  if (recentMsgIds.has(id)) return true;
+  recentMsgIds.set(id, now + MSG_ID_TTL_MS);
+  return false;
+}
+
 function bufferMessage({ agent, instanceName, remoteJid, pushName, text, messageType, whatsappMsgId }) {
   const key = `${agent.id}:${remoteJid}`;
   let entry = pendingByConv.get(key);
@@ -145,6 +162,12 @@ r.post(["/", "/*"], (req, res) => {
         if (key.fromMe === true) return;
         if (!remoteJid) return;
         if (remoteJid.includes("@g.us") || remoteJid.includes("status@broadcast")) return;
+
+        // Dedupe global antes de qualquer trabalho caro (transcrição, LLM, etc)
+        if (seenMsgId(key.id)) {
+          console.log(`[webhook] msg duplicada ignorada (global) id=${key.id}`);
+          return;
+        }
 
         // Lookup instance
         const waInstance = await prisma.whatsAppInstance.findFirst({
