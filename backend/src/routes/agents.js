@@ -70,6 +70,7 @@ r.put("/:id", async (req, res) => {
     const data = { ...req.body };
     delete data.id; delete data.client; delete data.provider;
     delete data.knowledgeFiles; delete data.agentNotes; delete data.usageLogs;
+    delete data.whatsappInstance; delete data.conversations;
     delete data.createdAt; delete data.updatedAt;
     const updated = await prisma.agent.update({ where: { id: req.params.id }, data });
     res.json(updated);
