@@ -202,12 +202,16 @@ export async function processIncomingMessage({ agent, remoteJid, pushName, text,
         temperature: agent.temperature,
         maxTokens: agent.maxTokens,
       });
+      if (!result?.text || !result.text.trim()) {
+        throw new Error("resposta vazia do modelo");
+      }
       if (m !== agent.model) {
         console.warn(`[conversation-manager] modelo principal ${agent.model} falhou, usando fallback ${m}`);
       }
       break;
     } catch (err) {
       lastErr = err;
+      result = null;
       console.error(`[conversation-manager] LLM error em ${m}:`, err.message || err);
     }
   }

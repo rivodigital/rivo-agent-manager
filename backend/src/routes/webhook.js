@@ -51,6 +51,8 @@ async function flushBuffer(entry) {
     const messageType = nonTextPart ? nonTextPart.messageType : "text";
     const aggregatedText = entry.parts.map((p) => p.text).filter(Boolean).join("\n");
 
+    console.log(`[webhook] flush conv=${agent.id}:${remoteJid} type=${messageType} text="${aggregatedText.slice(0, 120)}"`);
+
     const { reply } = await processIncomingMessage({
       agent,
       remoteJid,
@@ -60,12 +62,17 @@ async function flushBuffer(entry) {
       whatsappMsgId,
     });
 
-    if (reply) {
+    const trimmed = (reply || "").trim();
+    console.log(`[webhook] reply length=${trimmed.length}`);
+
+    if (trimmed) {
       const number = jidToNumber(remoteJid);
-      await sendText(instanceName, number, reply);
+      await sendText(instanceName, number, trimmed);
+    } else {
+      console.warn(`[webhook] reply vazia — nada enviado para ${remoteJid}`);
     }
   } catch (err) {
-    console.error("[webhook] flushBuffer error:", err.message || err);
+    console.error("[webhook] flushBuffer error:", err.message || err, err.stack);
   }
 }
 
@@ -176,7 +183,12 @@ r.post(["/", "/*"], (req, res) => {
             text = transcribed || "";
             messageType = "text";
           } catch (err) {
-            console.error("[webhook] falha ao transcrever áudio:", err.message || err);
+            console.error(
+              "[webhook] falha ao transcrever áudio:",
+              err.message || err,
+              err.response?.status,
+              JSON.stringify(err.response?.data)?.slice(0, 300)
+            );
             // Mantém messageType=audio → o conversation-manager responde a mensagem padrão
           }
         }
