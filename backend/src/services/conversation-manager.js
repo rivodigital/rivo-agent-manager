@@ -179,18 +179,41 @@ export async function processIncomingMessage({ agent, remoteJid, pushName, text,
   const systemPrompt = buildSystemPrompt(agent);
   const messages = history.map((m) => ({ role: m.role, content: m.content }));
 
+  // Lista de modelos para tentar (modelo principal + fallbacks do mesmo provider)
+  let providerModels = [];
+  try {
+    providerModels = typeof agent.provider.models === "string"
+      ? JSON.parse(agent.provider.models)
+      : (agent.provider.models || []);
+  } catch { providerModels = []; }
+  const modelsToTry = [agent.model, ...providerModels.filter((m) => m !== agent.model)];
+
   let reply;
   let isFallback = false;
-  try {
-    const result = await chat({
-      provider: agent.provider,
-      model: agent.model,
-      systemPrompt,
-      messages,
-      temperature: agent.temperature,
-      maxTokens: agent.maxTokens,
-    });
+  let result = null;
+  let lastErr = null;
+  for (const m of modelsToTry) {
+    try {
+      result = await chat({
+        provider: agent.provider,
+        model: m,
+        systemPrompt,
+        messages,
+        temperature: agent.temperature,
+        maxTokens: agent.maxTokens,
+      });
+      if (m !== agent.model) {
+        console.warn(`[conversation-manager] modelo principal ${agent.model} falhou, usando fallback ${m}`);
+      }
+      break;
+    } catch (err) {
+      lastErr = err;
+      console.error(`[conversation-manager] LLM error em ${m}:`, err.message || err);
+    }
+  }
 
+  try {
+    if (!result) throw lastErr || new Error("nenhum modelo respondeu");
     reply = result.text;
 
     // Save assistant message
