@@ -2,6 +2,7 @@ import { useState } from "react";
 import { useParams, Link } from "react-router-dom";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { get, put, post, del } from "../lib/api.js";
+import { useToast } from "../lib/toast.jsx";
 import Badge from "../components/ui/Badge.jsx";
 import { ArrowLeft, Save, Plus, Trash2, Wifi, WifiOff, QrCode, RefreshCw, Unplug } from "lucide-react";
 
@@ -10,6 +11,7 @@ const TABS = ["Geral", "Prompt & Regras", "Conhecimento", "Canais", "WhatsApp", 
 export default function AgentConfig() {
   const { id } = useParams();
   const qc = useQueryClient();
+  const toast = useToast();
   const [tab, setTab] = useState("Geral");
 
   const { data: agent } = useQuery({ queryKey: ["agent", id], queryFn: () => get(`/agents/${id}`) });
@@ -17,7 +19,11 @@ export default function AgentConfig() {
 
   const update = useMutation({
     mutationFn: (data) => put(`/agents/${id}`, data),
-    onSuccess: () => qc.invalidateQueries({ queryKey: ["agent", id] }),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["agent", id] });
+      toast("Alterações salvas");
+    },
+    onError: (e) => toast(e.response?.data?.error || "Erro ao salvar", "error"),
   });
 
   if (!agent) return <div className="text-zinc-500">carregando…</div>;
