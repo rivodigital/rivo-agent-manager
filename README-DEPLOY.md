@@ -162,8 +162,31 @@ docker compose -f docker-compose.prod.yml start backend
 
 ---
 
-## 8. Updates futuros
+## 8. Updates futuros (auto-deploy via GitHub webhook)
 
+Já vem configurado um container `deployer` que escuta webhooks do GitHub. Toda vez que você dá `git push origin main`, ele roda `git pull && docker compose up -d --build` sozinho.
+
+**Setup (uma vez):**
+
+1. Gere um segredo forte e bote no `.env` do servidor:
+   ```bash
+   echo "WEBHOOK_SECRET=$(openssl rand -hex 32)" >> .env
+   docker compose -f docker-compose.prod.yml up -d --build deployer
+   ```
+
+2. No GitHub: repo → **Settings → Webhooks → Add webhook**
+   - **Payload URL**: `https://agente.rivos.me/hooks/deploy`
+   - **Content type**: `application/json`
+   - **Secret**: cole o mesmo valor do `WEBHOOK_SECRET`
+   - **Which events**: `Just the push event`
+   - **Active**: ✓
+
+3. Pronto. Teste com qualquer push em `main`. Pra ver os logs do deploy:
+   ```bash
+   docker compose -f docker-compose.prod.yml logs -f deployer
+   ```
+
+**Deploy manual (sem push)**, se precisar:
 ```bash
 ssh deploy@IP_DO_HETZNER
 cd ~/rivo-agent-manager

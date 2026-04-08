@@ -8,6 +8,11 @@
 {$DOMAIN} {
     encode gzip zstd
 
+    # Webhook de deploy (GitHub → deployer)
+    handle /hooks/* {
+        reverse_proxy deployer:9000
+    }
+
     # Rotas do backend (/api/*)
     handle /api/* {
         reverse_proxy backend:3001

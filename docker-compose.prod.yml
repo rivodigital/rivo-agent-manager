@@ -136,6 +136,23 @@ services:
     networks:
       - rivo-network
 
+  deployer:
+    build:
+      context: ./deployer
+      dockerfile: Dockerfile
+    image: rivo-deployer:latest
+    container_name: rivo-deployer
+    restart: unless-stopped
+    environment:
+      WEBHOOK_SECRET: ${WEBHOOK_SECRET}
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+      - ./hooks.json:/etc/webhook/hooks.json:ro
+      - ./deploy.sh:/scripts/deploy.sh:ro
+      - .:/repo
+    networks:
+      - rivo-network
+
 volumes:
   postgres_evolution_data:
   redis_data:
