@@ -26,14 +26,26 @@ export async function chat({ apiKey, model, systemPrompt, messages, temperature 
 
   const url = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${apiKey}`;
 
-  const r = await fetch(url, {
-    method: "POST",
-    headers: { "content-type": "application/json" },
-    body: JSON.stringify(body),
-  });
+  // Retry com backoff em 429/503 (sobrecarga do Gemini)
+  let r;
+  let lastErr;
+  const delays = [800, 2000, 4000];
+  for (let attempt = 0; attempt <= delays.length; attempt++) {
+    r = await fetch(url, {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify(body),
+    });
+    if (r.ok) break;
+    if (r.status !== 429 && r.status !== 503) break;
+    lastErr = await r.text();
+    if (attempt < delays.length) {
+      await new Promise((res) => setTimeout(res, delays[attempt]));
+    }
+  }
 
   if (!r.ok) {
-    const txt = await r.text();
+    const txt = lastErr || (await r.text());
     throw new Error(`google ${r.status}: ${txt.slice(0, 300)}`);
   }
 
