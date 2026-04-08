@@ -7,7 +7,7 @@
 # ============================================================================
 set -e
 
-cd /repo
+cd /root/rivo-agent-manager
 
 # Força o mesmo project name usado quando se sobe manualmente do host
 # (senão o compose usa "repo" e cria uma stack paralela em conflito)

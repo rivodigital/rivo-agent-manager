@@ -149,7 +149,7 @@ services:
       - /var/run/docker.sock:/var/run/docker.sock
       - ./hooks.json:/etc/webhook/hooks.json:ro
       - ./deploy.sh:/scripts/deploy.sh:ro
-      - .:/repo
+      - /root/rivo-agent-manager:/root/rivo-agent-manager
     networks:
       - rivo-network
 
