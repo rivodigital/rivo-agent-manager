@@ -6,8 +6,6 @@ import { requireRole } from "../middleware/rbac.js";
 const r = Router();
 
 r.get("/", async (_req, res) => {
-
-r.get("/", async (_req, res) => {
   const items = await prisma.provider.findMany({ orderBy: { createdAt: "desc" } });
   res.json(items.map(p => ({ ...p, models: safeParse(p.models, []) })));
 });
