@@ -7,6 +7,7 @@ import { transcribeAudio, analyzeImage } from "../services/transcribe.js";
 const r = Router();
 
 const MESSAGE_BUFFER_SECONDS = parseInt(process.env.MESSAGE_BUFFER_SECONDS || "3", 10);
+const HUMAN_TAKEOVER_MINUTES = parseInt(process.env.HUMAN_TAKEOVER_MINUTES || "30", 10);
 
 // ---------------------------------------------------------------------------
 // In-memory buffer for rapid messages
@@ -71,6 +72,19 @@ async function flushBuffer(entry) {
     const aggregatedText = entry.parts.map((p) => p.text).filter(Boolean).join("\n");
 
     console.log(`[webhook] flush conv=${agent.id}:${remoteJid} type=${messageType} text="${aggregatedText.slice(0, 120)}"`);
+
+    // Check human takeover — se humano respondeu nos últimos N minutos, bot não responde
+    const existingConv = await prisma.conversation.findFirst({
+      where: { agentId: agent.id, remoteJid },
+    });
+    if (existingConv?.lastHumanMessageAt) {
+      const elapsed = Date.now() - existingConv.lastHumanMessageAt.getTime();
+      if (elapsed < HUMAN_TAKEOVER_MINUTES * 60 * 1000) {
+        const mins = Math.round(elapsed / 60000);
+        console.log(`[webhook] bot pausado — humano ativo há ${mins}min (limite: ${HUMAN_TAKEOVER_MINUTES}min)`);
+        return;
+      }
+    }
 
     const { reply } = await processIncomingMessage({
       agent,
@@ -161,10 +175,23 @@ r.post(["/", "/*"], (req, res) => {
         const key = data.key || {};
         const remoteJid = key.remoteJid;
 
-        // Ignore own messages, groups, and broadcast
-        if (key.fromMe === true) return;
         if (!remoteJid) return;
         if (remoteJid.includes("@g.us") || remoteJid.includes("status@broadcast")) return;
+
+        // ---- HUMAN TAKEOVER: humano da empresa respondeu → pausar bot ----
+        if (key.fromMe === true) {
+          const waInstance = await prisma.whatsAppInstance.findFirst({
+            where: { instanceName },
+          });
+          if (waInstance) {
+            await prisma.conversation.updateMany({
+              where: { agentId: waInstance.agentId, remoteJid },
+              data: { lastHumanMessageAt: new Date() },
+            });
+            console.log(`[webhook] humano assumiu conversa ${remoteJid} — bot pausado por ${HUMAN_TAKEOVER_MINUTES}min`);
+          }
+          return;
+        }
 
         // Dedupe global antes de qualquer trabalho caro (transcrição, LLM, etc)
         if (seenMsgId(key.id)) {

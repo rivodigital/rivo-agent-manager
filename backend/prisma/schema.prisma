@@ -131,6 +131,7 @@ model Conversation {
   qualificationData  String?
   assignedTo         String?
   summary            String?
+  lastHumanMessageAt DateTime?
   messages           Message[]
   startedAt          DateTime  @default(now())
   lastMessageAt      DateTime  @default(now())
