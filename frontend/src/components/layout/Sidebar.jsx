@@ -1,5 +1,5 @@
 import { NavLink } from "react-router-dom";
-import { LayoutDashboard, Users, Bot, MessageSquare, Cpu, LogOut } from "lucide-react";
+import { LayoutDashboard, Users, Bot, MessageSquare, Cpu, LogOut, Shield } from "lucide-react";
 import { cn } from "../../lib/utils.js";
 import { useAuth } from "../../lib/auth.jsx";
 
@@ -9,6 +9,8 @@ const links = [
   { to: "/agents", label: "Agentes", icon: Bot },
   { to: "/conversations", label: "Conversas", icon: MessageSquare },
   { to: "/providers", label: "Provedores", icon: Cpu },
+  { to: "/blocklist", label: "Blocklist", icon: Shield },
+  { to: "/users", label: "Usuários", icon: Shield, adminOnly: true },
 ];
 
 export default function Sidebar() {
@@ -31,24 +33,27 @@ export default function Sidebar() {
         </div>
       </div>
       <nav className="flex-1 p-4 space-y-1">
-        {links.map(({ to, label, icon: Icon, end }) => (
-          <NavLink
-            key={to}
-            to={to}
-            end={end}
-            className={({ isActive }) =>
-              cn(
-                "flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium transition-all duration-300",
-                isActive
-                  ? "bg-brand-white/5 text-brand-white border border-brand-white/10"
-                  : "text-brand-muted hover:text-brand-white hover:bg-brand-white/5 border border-transparent"
-              )
-            }
-          >
-            <Icon size={18} className="shrink-0" />
-            {label}
-          </NavLink>
-        ))}
+        {links.map(({ to, label, icon: Icon, end, adminOnly }) => {
+          if (adminOnly && user?.role !== "admin") return null;
+          return (
+            <NavLink
+              key={to}
+              to={to}
+              end={end}
+              className={({ isActive }) =>
+                cn(
+                  "flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium transition-all duration-300",
+                  isActive
+                    ? "bg-brand-white/5 text-brand-white border border-brand-white/10"
+                    : "text-brand-muted hover:text-brand-white hover:bg-brand-white/5 border border-transparent"
+                )
+              }
+            >
+              <Icon size={18} className="shrink-0" />
+              {label}
+            </NavLink>
+          );
+        })}
       </nav>
       <div className="p-4 border-t border-brand-border/50 space-y-3">
         {user && (

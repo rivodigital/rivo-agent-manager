@@ -1,15 +1,48 @@
 import { Router } from "express";
 import { prisma } from "../db.js";
 import { processIncomingMessage } from "../services/conversation-manager.js";
-import { sendText, sendPresence, jidToNumber, stripDataUrl, getMediaBase64 } from "../services/evolution.js";
+import { sendText, sendPresence, sendButtons, sendList, jidToNumber, stripDataUrl, getMediaBase64 } from "../services/evolution.js";
 import { transcribeAudio, analyzeImage } from "../services/transcribe.js";
 import { splitMessage, calculateDelay } from "../services/message-utils.js";
 import { isWithinBusinessHours } from "../services/business-hours.js";
+import { cancelPendingFollowUps, scheduleFollowUps } from "../services/follow-up.js";
+import { parseInteractiveMessage } from "../services/interactive-parser.js";
 
 const r = Router();
 
 const MESSAGE_BUFFER_SECONDS = parseInt(process.env.MESSAGE_BUFFER_SECONDS || "3", 10);
 const HUMAN_TAKEOVER_MINUTES = parseInt(process.env.HUMAN_TAKEOVER_MINUTES || "30", 10);
+
+// ---------------------------------------------------------------------------
+// Rate limiting in-memory
+// ---------------------------------------------------------------------------
+const rateLimits = new Map(); // phone → { count, windowStart, pausedUntil }
+const RATE_LIMIT_MAX = 20;
+const RATE_LIMIT_WINDOW_MS = 5 * 60 * 1000;
+const RATE_LIMIT_PAUSE_MS = 10 * 60 * 1000;
+
+function checkRateLimit(phone) {
+  const now = Date.now();
+  const entry = rateLimits.get(phone);
+
+  if (entry?.pausedUntil && entry.pausedUntil > now) {
+    return false; // still paused
+  }
+
+  if (!entry || now - entry.windowStart > RATE_LIMIT_WINDOW_MS) {
+    rateLimits.set(phone, { count: 1, windowStart: now, pausedUntil: null });
+    return true;
+  }
+
+  entry.count++;
+  if (entry.count > RATE_LIMIT_MAX) {
+    entry.pausedUntil = now + RATE_LIMIT_PAUSE_MS;
+    console.log(`[webhook] rate limit atingido para ${phone} — pausado por 10min`);
+    return false;
+  }
+
+  return true;
+}
 
 // ---------------------------------------------------------------------------
 // In-memory buffer for rapid messages
@@ -74,6 +107,16 @@ async function flushBuffer(entry) {
     const aggregatedText = entry.parts.map((p) => p.text).filter(Boolean).join("\n");
 
     console.log(`[webhook] flush conv=${agent.id}:${remoteJid} type=${messageType} text="${aggregatedText.slice(0, 120)}"`);
+
+    // Cancel any pending follow-ups since client responded
+    const convForCancel = await prisma.conversation.findFirst({
+      where: { agentId: agent.id, remoteJid },
+    });
+    if (convForCancel) {
+      cancelPendingFollowUps(convForCancel.id).catch(err =>
+        console.error("[webhook] cancelPendingFollowUps error:", err.message || err)
+      );
+    }
 
     // Check human takeover — se humano respondeu nos últimos N minutos, bot não responde
     const existingConv = await prisma.conversation.findFirst({
@@ -160,13 +203,46 @@ async function flushBuffer(entry) {
     console.log(`[webhook] reply length=${trimmed.length}`);
 
     if (trimmed) {
+      // Schedule follow-ups since bot is responding
+      const conv = await prisma.conversation.findFirst({
+        where: { agentId: agent.id, remoteJid },
+      });
+      if (conv) {
+        scheduleFollowUps(conv.id, agent.followUpConfig).catch(err =>
+          console.error("[webhook] scheduleFollowUps error:", err.message || err)
+        );
+      }
+
       const number = jidToNumber(remoteJid);
-      const chunks = splitMessage(trimmed);
-      for (const chunk of chunks) {
-        const delay = calculateDelay(chunk);
+      const parsed = parseInteractiveMessage(trimmed);
+
+      if (parsed.type === "buttons") {
+        const delay = calculateDelay(parsed.text);
         await sendPresence(instanceName, number, delay);
         await new Promise(r => setTimeout(r, delay));
-        await sendText(instanceName, number, chunk);
+        await sendButtons(instanceName, number, {
+          title: parsed.text.slice(0, 60),
+          description: parsed.text,
+          buttons: parsed.buttons,
+        });
+      } else if (parsed.type === "list") {
+        const delay = calculateDelay(parsed.text);
+        await sendPresence(instanceName, number, delay);
+        await new Promise(r => setTimeout(r, delay));
+        await sendList(instanceName, number, {
+          title: parsed.title || parsed.text.slice(0, 60),
+          description: parsed.text,
+          buttonText: parsed.buttonText,
+          sections: parsed.sections,
+        });
+      } else {
+        const chunks = splitMessage(parsed.text);
+        for (const chunk of chunks) {
+          const delay = calculateDelay(chunk);
+          await sendPresence(instanceName, number, delay);
+          await new Promise(r => setTimeout(r, delay));
+          await sendText(instanceName, number, chunk);
+        }
       }
     } else {
       console.warn(`[webhook] reply vazia — nada enviado para ${remoteJid}`);
@@ -244,6 +320,20 @@ r.post(["/", "/*"], (req, res) => {
 
         if (!remoteJid) return;
         if (remoteJid.includes("@g.us") || remoteJid.includes("status@broadcast")) return;
+
+        // ---- BLOCKLIST: número bloqueado → ignorar silenciosamente ----
+        const phone = remoteJid.split("@")[0];
+        const blocked = await prisma.blocklist.findFirst({ where: { phone } });
+        if (blocked) {
+          console.log(`[webhook] número bloqueado: ${phone}`);
+          return;
+        }
+
+        // ---- RATE LIMITING: >20 msgs em 5min → pausa 10min ----
+        if (!checkRateLimit(phone)) {
+          console.log(`[webhook] rate limit: ignorando msg de ${phone}`);
+          return;
+        }
 
         // ---- HUMAN TAKEOVER: humano da empresa respondeu → pausar bot ----
         if (key.fromMe === true) {

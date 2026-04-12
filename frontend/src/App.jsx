@@ -9,6 +9,8 @@ import AgentConfig from "./pages/AgentConfig.jsx";
 import Agents from "./pages/Agents.jsx";
 import Providers from "./pages/Providers.jsx";
 import Conversations from "./pages/Conversations.jsx";
+import Blocklist from "./pages/Blocklist.jsx";
+import Users from "./pages/Users.jsx";
 
 export default function App() {
   return (
@@ -28,6 +30,8 @@ export default function App() {
         <Route path="agents/:id" element={<AgentConfig />} />
         <Route path="providers" element={<Providers />} />
         <Route path="conversations" element={<Conversations />} />
+        <Route path="blocklist" element={<Blocklist />} />
+        <Route path="users" element={<Users />} />
         <Route path="*" element={<Navigate to="/" />} />
       </Route>
     </Routes>

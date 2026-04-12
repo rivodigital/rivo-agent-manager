@@ -4,9 +4,9 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { get, put, post, del } from "../lib/api.js";
 import { useToast } from "../lib/toast.jsx";
 import Badge from "../components/ui/Badge.jsx";
-import { ArrowLeft, Save, Plus, Trash2, Wifi, WifiOff, QrCode, RefreshCw, Unplug, Bot, Clock } from "lucide-react";
+import { ArrowLeft, Save, Plus, Trash2, Wifi, WifiOff, QrCode, RefreshCw, Unplug, Bot, Clock, Bell, Webhook, Send, TestTube } from "lucide-react";
 
-const TABS = ["Geral", "Prompt & Regras", "Conhecimento", "Canais", "WhatsApp", "Horários", "Notas", "Métricas"];
+const TABS = ["Geral", "Prompt & Regras", "Conhecimento", "Canais", "WhatsApp", "Horários", "Notas", "Métricas", "Follow-ups", "Webhooks"];
 
 export default function AgentConfig() {
   const { id } = useParams();
@@ -71,6 +71,8 @@ export default function AgentConfig() {
       {tab === "Horários" && <TabBusinessHours agent={agent} onSave={(d) => update.mutate(d)} loading={update.isPending} />}
       {tab === "Notas" && <TabNotes agent={agent} />}
       {tab === "Métricas" && <TabMetrics agent={agent} onSave={(d) => update.mutate(d)} loading={update.isPending} />}
+      {tab === "Follow-ups" && <TabFollowUps agent={agent} onSave={(d) => update.mutate(d)} loading={update.isPending} />}
+      {tab === "Webhooks" && <TabWebhooks agent={agent} />}
     </div>
   );
 }
@@ -661,10 +663,332 @@ function TabWhatsApp({ agent }) {
             <Unplug size={16} />
             Desconectar
           </button>
+      </div>
+    </div>
+  );
+}
+
+function TabFollowUps({ agent, onSave, loading }) {
+  const [f, setF] = useState(() => {
+    try {
+      return JSON.parse(agent.followUpConfig || "null") || {
+        enabled: false,
+        delays: [60, 240, 1440],
+        messages: [
+          "Olá {{leadName}}! Como posso te ajudar hoje?",
+          "Olá {{leadName}}! Retornando seu contato. Alguma novidade?",
+          "Olá {{leadName}}! Só passando para saber se precisa de mais alguma ajuda.",
+        ],
+      };
+    } catch {
+      return {
+        enabled: false,
+        delays: [60, 240, 1440],
+        messages: [
+          "Olá {{leadName}}! Como posso te ajudar hoje?",
+          "Olá {{leadName}}! Retornando seu contato. Alguma novidade?",
+          "Olá {{leadName}}! Só passando para saber se precisa de mais alguma ajuda.",
+        ],
+      };
+    }
+  });
+
+  const delayLabels = { 30: "30 min", 60: "1 hora", 240: "4 horas", 1440: "1 dia", 10080: "1 semana" };
+
+  const setDelay = (idx, value) => {
+    const newDelays = [...f.delays];
+    newDelays[idx] = parseInt(value);
+    setF(s => ({ ...s, delays: newDelays }));
+  };
+
+  const setMessage = (idx, value) => {
+    const newMessages = [...f.messages];
+    newMessages[idx] = value;
+    setF(s => ({ ...s, messages: newMessages }));
+  };
+
+  return (
+    <div className="card p-6 space-y-6">
+      <div className="flex items-center gap-3 mb-2">
+        <Bell size={18} className="text-brand-accent" />
+        <h3 className="font-sora text-lg font-semibold">Follow-ups Automáticos</h3>
+      </div>
+
+      <div className="flex items-center gap-4">
+        <label className="flex items-center gap-3 cursor-pointer">
+          <input
+            type="checkbox"
+            checked={f.enabled}
+            onChange={(e) => setF(s => ({ ...s, enabled: e.target.checked }))}
+            className="w-5 h-5 rounded accent-brand-accent"
+          />
+          <span className="text-sm font-medium">Ativar follow-ups automáticos</span>
+        </label>
+      </div>
+
+      {f.enabled && (
+        <>
+          <div className="space-y-3">
+            <label className="label">Delays (em minutos) — até 3 follow-ups</label>
+            {[0, 1, 2].map((idx) => (
+              <div key={idx} className="flex items-center gap-3">
+                <span className="text-xs text-brand-muted w-20">Follow-up {idx + 1}</span>
+                <select
+                  className="input max-w-[200px]"
+                  value={f.delays[idx] || 60}
+                  onChange={(e) => setDelay(idx, e.target.value)}
+                >
+                  {Object.entries(delayLabels).map(([val, label]) => (
+                    <option key={val} value={val}>{label}</option>
+                  ))}
+                </select>
+                <span className="text-xs text-brand-muted">após fechar conversa</span>
+              </div>
+            ))}
+          </div>
+
+          <div className="space-y-3">
+            <label className="label">Mensagens</label>
+            {f.messages.map((msg, idx) => (
+              <div key={idx}>
+                <div className="text-xs text-brand-muted mb-1">Follow-up {idx + 1}</div>
+                <textarea
+                  className="input min-h-[80px] resize-none"
+                  value={msg}
+                  onChange={(e) => setMessage(idx, e.target.value)}
+                  placeholder={`Mensagem ${idx + 1}…`}
+                />
+              </div>
+            ))}
+            <p className="text-xs text-brand-muted mt-2">
+              Use {"{{leadName}}"} para inserir o nome do lead. A mensagem só é enviada se a conversa estiver fechada há mais de 5 minutos.
+            </p>
+          </div>
+        </>
+      )}
+
+      <button className="btn btn-primary" onClick={() => onSave({ followUpConfig: JSON.stringify(f) })} disabled={loading}>
+        <Save size={16} /> Salvar
+      </button>
+    </div>
+  );
+}
+
+const WEBHOOK_EVENTS = [
+  { value: "lead.qualified", label: "Lead Qualificado" },
+  { value: "lead.score_updated", label: "Score Atualizado" },
+  { value: "conversation.started", label: "Conversa Iniciada" },
+  { value: "conversation.escalated", label: "Conversa Escalada" },
+  { value: "conversation.closed", label: "Conversa Encerrada" },
+  { value: "message.received", label: "Mensagem Recebida" },
+  { value: "message.sent", label: "Mensagem Enviada" },
+  { value: "test", label: "Teste" },
+];
+
+function TabWebhooks({ agent }) {
+  const qc = useQueryClient();
+  const [adding, setAdding] = useState(false);
+  const [editing, setEditing] = useState(null);
+  const [testing, setTesting] = useState(null);
+
+  const { data: configs = [], isLoading } = useQuery({
+    queryKey: ["webhook-configs", agent.id],
+    queryFn: () => get(`/agents/${agent.id}/webhook-configs`),
+  });
+
+  const create = useMutation({
+    mutationFn: (data) => post(`/agents/${agent.id}/webhook-configs`, data),
+    onSuccess: () => { qc.invalidateQueries({ queryKey: ["webhook-configs", agent.id] }); setAdding(false); },
+    onError: (e) => toast(e.response?.data?.error || "Erro", "error"),
+  });
+
+  const update = useMutation({
+    mutationFn: ({ id, data }) => put(`/agents/${agent.id}/webhook-configs/${id}`, data),
+    onSuccess: () => { qc.invalidateQueries({ queryKey: ["webhook-configs", agent.id] }); setEditing(null); },
+    onError: (e) => toast(e.response?.data?.error || "Erro", "error"),
+  });
+
+  const remove = useMutation({
+    mutationFn: (id) => del(`/agents/${agent.id}/webhook-configs/${id}`),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ["webhook-configs", agent.id] }),
+    onError: (e) => toast(e.response?.data?.error || "Erro", "error"),
+  });
+
+  const test = useMutation({
+    mutationFn: (id) => post(`/agents/${agent.id}/webhook-configs/${id}/test`),
+    onSuccess: () => toast("Webhook de teste enviado!", "success"),
+    onError: (e) => toast(e.response?.data?.error || "Erro ao testar", "error"),
+  });
+
+  return (
+    <div className="space-y-4">
+      <div className="flex items-center justify-between">
+        <div className="flex items-center gap-3">
+          <Webhook size={18} className="text-brand-accent" />
+          <h3 className="font-sora text-lg font-semibold">Webhooks</h3>
+        </div>
+        <button className="btn btn-primary" onClick={() => setAdding(true)}>
+          <Plus size={16} /> Novo Webhook
+        </button>
+      </div>
+
+      {adding && (
+        <WebhookForm
+          onCancel={() => setAdding(false)}
+          onSubmit={(data) => create.mutate(data)}
+          loading={create.isPending}
+        />
+      )}
+
+      {isLoading ? (
+        <div className="text-center py-8 text-brand-muted">carregando…</div>
+      ) : configs.length === 0 ? (
+        <div className="card p-10 text-center">
+          <Webhook size={32} className="mx-auto mb-3 text-brand-muted" />
+          <p className="text-brand-muted text-sm">Nenhum webhook configurado.</p>
+        </div>
+      ) : (
+        <div className="space-y-3">
+          {configs.map((cfg) => (
+            <div key={cfg.id} className="card p-5">
+              {editing === cfg.id ? (
+                <WebhookForm
+                  initial={cfg}
+                  onCancel={() => setEditing(null)}
+                  onSubmit={(data) => update.mutate({ id: cfg.id, data })}
+                  loading={update.isPending}
+                />
+              ) : (
+                <>
+                  <div className="flex items-start justify-between mb-3">
+                    <div className="flex-1">
+                      <div className="flex items-center gap-3 mb-1">
+                        <code className="text-sm text-brand-accent">{cfg.url}</code>
+                        <span className={`badge ${cfg.active ? "badge-success" : "badge-neutral"} text-[10px]`}>
+                          {cfg.active ? "ativo" : "inativo"}
+                        </span>
+                      </div>
+                      <div className="flex flex-wrap gap-1 mt-2">
+                        {(cfg.events || []).map((ev) => {
+                          const evLabel = WEBHOOK_EVENTS.find(e => e.value === ev)?.label || ev;
+                          return <span key={ev} className="badge badge-neutral text-[10px]">{evLabel}</span>;
+                        })}
+                      </div>
+                    </div>
+                    <div className="flex gap-2 ml-4">
+                      <button
+                        className="btn btn-ghost"
+                        onClick={() => test.mutate(cfg.id)}
+                        disabled={test.isPending}
+                        title="Testar"
+                      >
+                        <TestTube size={16} />
+                      </button>
+                      <button className="btn btn-ghost" onClick={() => setEditing(cfg.id)}>Editar</button>
+                      <button
+                        className="btn btn-ghost hover:text-red-500"
+                        onClick={() => confirm("Deletar?") && remove.mutate(cfg.id)}
+                      >
+                        <Trash2 size={16} />
+                      </button>
+                    </div>
+                  </div>
+                </>
+              )}
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
+function WebhookForm({ initial, onSubmit, onCancel, loading }) {
+  const [f, setF] = useState({
+    url: initial?.url || "",
+    events: initial?.events || [],
+    headers: initial?.headers || {},
+    active: initial?.active ?? true,
+  });
+
+  const toggleEvent = (ev) => {
+    setF(s => ({
+      ...s,
+      events: s.events.includes(ev) ? s.events.filter(e => e !== ev) : [...s.events, ev],
+    }));
+  };
+
+  const handleSubmit = (e) => {
+    e.preventDefault();
+    if (!f.url || !f.events.length) return;
+    onSubmit(f);
+  };
+
+  return (
+    <form onSubmit={handleSubmit} className="card p-5 space-y-4">
+      <div>
+        <label className="label">URL</label>
+        <input
+          className="input"
+          type="url"
+          placeholder="https://seu-sistema.com/webhook"
+          value={f.url}
+          onChange={(e) => setF(s => ({ ...s, url: e.target.value }))}
+          required
+        />
+      </div>
+      <div>
+        <label className="label">Eventos</label>
+        <div className="flex flex-wrap gap-2 mt-2">
+          {WEBHOOK_EVENTS.map(({ value, label }) => (
+            <button
+              key={value}
+              type="button"
+              onClick={() => toggleEvent(value)}
+              className={`text-xs px-3 py-1.5 rounded-lg border transition-all ${
+                f.events.includes(value)
+                  ? "border-brand-accent bg-brand-accent/10 text-brand-accent"
+                  : "border-brand-border text-brand-muted hover:border-brand-muted"
+              }`}
+            >
+              {label}
+            </button>
+          ))}
         </div>
       </div>
-    );
-  }
+      <div>
+        <label className="label">Headers (opcional, JSON)</label>
+        <textarea
+          className="input min-h-[60px] resize-none font-mono text-xs"
+          placeholder='{"Authorization": "Bearer ..."}'
+          value={JSON.stringify(f.headers || {})}
+          onChange={(e) => {
+            try {
+              setF(s => ({ ...s, headers: JSON.parse(e.target.value) || {} }));
+            } catch {}
+          }}
+        />
+      </div>
+      <div className="flex items-center gap-3">
+        <label className="flex items-center gap-2 cursor-pointer">
+          <input
+            type="checkbox"
+            checked={f.active}
+            onChange={(e) => setF(s => ({ ...s, active: e.target.checked }))}
+            className="w-4 h-4 rounded accent-brand-accent"
+          />
+          <span className="text-sm">Ativo</span>
+        </label>
+      </div>
+      <div className="flex gap-3">
+        <button type="submit" className="btn btn-primary" disabled={loading || !f.url || !f.events.length}>
+          <Send size={16} /> {initial ? "Atualizar" : "Criar"}
+        </button>
+        <button type="button" className="btn" onClick={onCancel}>Cancelar</button>
+      </div>
+    </form>
+  );
+}
 
   return (
     <div className="card p-6 space-y-5">

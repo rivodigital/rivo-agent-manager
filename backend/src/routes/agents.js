@@ -1,5 +1,6 @@
 import { Router } from "express";
 import { prisma } from "../db.js";
+import { requireRole } from "../middleware/rbac.js";
 
 const r = Router();
 
@@ -20,7 +21,7 @@ r.get("/", async (req, res) => {
   res.json(items);
 });
 
-r.post("/", async (req, res) => {
+r.post("/", requireRole("admin"), async (req, res) => {
   const b = req.body;
   if (!b.clientId || !b.providerId || !b.name || !b.model)
     return res.status(400).json({ error: "clientId, providerId, name, model required" });
@@ -65,7 +66,7 @@ r.get("/:id", async (req, res) => {
   res.json(a);
 });
 
-r.put("/:id", async (req, res) => {
+r.put("/:id", requireRole("admin"), async (req, res) => {
   try {
     const data = { ...req.body };
     delete data.id; delete data.client; delete data.provider;
@@ -77,7 +78,7 @@ r.put("/:id", async (req, res) => {
   } catch (e) { res.status(400).json({ error: String(e.message) }); }
 });
 
-r.delete("/:id", async (req, res) => {
+r.delete("/:id", requireRole("admin"), async (req, res) => {
   try {
     await prisma.agent.delete({ where: { id: req.params.id } });
     res.status(204).end();

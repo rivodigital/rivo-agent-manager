@@ -96,3 +96,34 @@ export function jidToNumber(jid) {
   if (!jid) return null;
   return String(jid).split("@")[0];
 }
+
+export async function sendButtons(instanceName, number, { title, description, buttons }) {
+  try {
+    const { data } = await client().post(`/message/sendButtons/${instanceName}`, {
+      number,
+      title,
+      description,
+      buttons,
+    });
+    return data;
+  } catch (err) {
+    console.error("[evolution] sendButtons error:", err.message || err);
+    throw err;
+  }
+}
+
+export async function sendList(instanceName, number, { title, description, buttonText, sections }) {
+  try {
+    const { data } = await client().post(`/message/sendList/${instanceName}`, {
+      number,
+      title,
+      description,
+      buttonText,
+      sections,
+    });
+    return data;
+  } catch (err) {
+    console.error("[evolution] sendList error:", err.message || err);
+    throw err;
+  }
+}

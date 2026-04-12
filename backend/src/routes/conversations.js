@@ -2,16 +2,18 @@ import { Router } from "express";
 import { prisma } from "../db.js";
 import { sendText, sendPresence, jidToNumber } from "../services/evolution.js";
 import { calculateDelay } from "../services/message-utils.js";
+import { requireRole } from "../middleware/rbac.js";
 
 const r = Router();
 
 // GET / — list conversations with optional filters
 r.get("/", async (req, res) => {
   try {
-    const { agentId, status } = req.query;
+    const { agentId, status, tag } = req.query;
     const where = {};
     if (agentId) where.agentId = String(agentId);
     if (status) where.status = String(status);
+    if (tag) where.tags = { contains: String(tag) };
 
     const items = await prisma.conversation.findMany({
       where,
@@ -46,7 +48,7 @@ r.get("/:id", async (req, res) => {
 });
 
 // PUT /:id — update conversation fields
-r.put("/:id", async (req, res) => {
+r.put("/:id", requireRole("admin", "operator"), async (req, res) => {
   try {
     const allowed = ["status", "assignedTo", "qualificationScore", "qualificationData"];
     const data = {};
@@ -65,7 +67,7 @@ r.put("/:id", async (req, res) => {
 });
 
 // POST /:id/close — close a conversation and send CSAT survey
-r.post("/:id/close", async (req, res) => {
+r.post("/:id/close", requireRole("admin", "operator"), async (req, res) => {
   try {
     const conversation = await prisma.conversation.findUnique({
       where: { id: req.params.id },
@@ -120,7 +122,7 @@ Basta responder com um número.`;
 });
 
 // POST /:id/resume-bot — resume bot responses
-r.post("/:id/resume-bot", async (req, res) => {
+r.post("/:id/resume-bot", requireRole("admin", "operator"), async (req, res) => {
   try {
     const updated = await prisma.conversation.update({
       where: { id: req.params.id },
@@ -136,7 +138,7 @@ r.post("/:id/resume-bot", async (req, res) => {
 });
 
 // POST /:id/notes — add internal note to conversation
-r.post("/:id/notes", async (req, res) => {
+r.post("/:id/notes", requireRole("admin", "operator"), async (req, res) => {
   try {
     const { content } = req.body;
     if (!content || !content.trim()) {
@@ -159,6 +161,38 @@ r.post("/:id/notes", async (req, res) => {
     });
 
     res.json(note);
+  } catch (e) {
+    res.status(400).json({ error: e.message });
+  }
+});
+
+// PATCH /:id/tags — update conversation tags
+r.patch("/:id/tags", requireRole("admin", "operator"), async (req, res) => {
+  try {
+    const { tags } = req.body;
+    if (!Array.isArray(tags)) return res.status(400).json({ error: "tags must be an array" });
+
+    const updated = await prisma.conversation.update({
+      where: { id: req.params.id },
+      data: { tags: JSON.stringify(tags) },
+    });
+    res.json(updated);
+  } catch (e) {
+    res.status(400).json({ error: e.message });
+  }
+});
+
+// POST /:id/tags — alias for PATCH (frontend uses post)
+r.post("/:id/tags", requireRole("admin", "operator"), async (req, res) => {
+  try {
+    const { tags } = req.body;
+    if (!Array.isArray(tags)) return res.status(400).json({ error: "tags must be an array" });
+
+    const updated = await prisma.conversation.update({
+      where: { id: req.params.id },
+      data: { tags: JSON.stringify(tags) },
+    });
+    res.json(updated);
   } catch (e) {
     res.status(400).json({ error: e.message });
   }

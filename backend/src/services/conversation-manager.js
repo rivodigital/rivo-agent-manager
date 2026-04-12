@@ -1,6 +1,9 @@
 import { prisma } from "../db.js";
 import { chat } from "./llm/connector.js";
 import { jidToNumber } from "./evolution.js";
+import { calculateLeadScore } from "./lead-scoring.js";
+import { detectSentiment } from "./sentiment.js";
+import { dispatchWebhook } from "./webhook-dispatcher.js";
 
 const CONVERSATION_HISTORY_LIMIT = parseInt(process.env.CONVERSATION_HISTORY_LIMIT || "20", 10);
 const FALLBACK_MESSAGE = process.env.FALLBACK_MESSAGE || "Desculpe, estou com uma dificuldade técnica no momento. Por favor, tente novamente em alguns instantes. 🙏";
@@ -230,7 +233,7 @@ export async function processIncomingMessage({ agent, remoteJid, pushName, text,
   }
 
   // Save user message
-  await prisma.message.create({
+  const userMessage = await prisma.message.create({
     data: {
       conversationId: conversation.id,
       role: "user",
@@ -240,12 +243,40 @@ export async function processIncomingMessage({ agent, remoteJid, pushName, text,
     },
   });
 
+  // Detect sentiment and save to message metadata
+  const { sentiment } = detectSentiment(text);
+  await prisma.message.update({
+    where: { id: userMessage.id },
+    data: { metadata: JSON.stringify({ sentiment }) },
+  });
+
   // Fetch history (last N messages in chronological order)
   const history = await prisma.message.findMany({
     where: { conversationId: conversation.id },
     orderBy: { createdAt: "asc" },
     take: CONVERSATION_HISTORY_LIMIT,
   });
+
+  // Auto-escalate if 2+ consecutive frustrated/negative messages
+  const recentUserMsgs = history.filter(m => m.role === "user").slice(-2);
+  if (recentUserMsgs.length >= 2) {
+    const allBad = recentUserMsgs.every(m => {
+      try {
+        const meta = JSON.parse(m.metadata || "{}");
+        return meta.sentiment === "frustrated" || meta.sentiment === "negative";
+      } catch { return false; }
+    });
+    if (allBad) {
+      console.log(`[conversation-manager] auto-escalando conversa ${conversation.id} por sentimento negativo consecutivo`);
+      await prisma.conversation.update({
+        where: { id: conversation.id },
+        data: { status: "escalated" },
+      });
+      conversation.status = "escalated";
+      generateSummary(conversation.id).catch(err => console.error("[conversation-manager] generateSummary async error:", err.message));
+      return { reply: null, conversation };
+    }
+  }
 
   // Build LLM call
   const systemPrompt = buildSystemPrompt(agent);
@@ -333,8 +364,57 @@ export async function processIncomingMessage({ agent, remoteJid, pushName, text,
       data: { status: "escalated" },
     });
     conversation.status = "escalated";
+    // Dispatch conversation.escalated webhook
+    const escalatedConv = await prisma.conversation.findUnique({
+      where: { id: conversation.id },
+      include: { agent: { select: { id: true, name: true } } },
+    });
+    dispatchWebhook(escalatedConv.agentId, "conversation.escalated", {
+      agent: { id: escalatedConv.agent?.id, name: escalatedConv.agent?.name },
+      conversation: {
+        id: escalatedConv.id,
+        leadName: escalatedConv.leadName,
+        leadPhone: escalatedConv.leadPhone,
+        qualificationScore: escalatedConv.qualificationScore,
+      },
+      summary: escalatedConv.summary,
+    }).catch(err => console.error("[conversation-manager] conversation.escalated webhook error:", err.message || err));
     // Generate summary for warm handoff
     generateSummary(conversation.id).catch(err => console.error("[conversation-manager] generateSummary async error:", err.message));
+  }
+
+  // Calculate lead score
+  const updatedHistory = await prisma.message.findMany({
+    where: { conversationId: conversation.id },
+    orderBy: { createdAt: "asc" },
+    take: CONVERSATION_HISTORY_LIMIT,
+  });
+  const scoring = calculateLeadScore(conversation, updatedHistory);
+  const prevScore = conversation.qualificationScore || 0;
+  await prisma.conversation.update({
+    where: { id: conversation.id },
+    data: {
+      qualificationScore: scoring.score,
+      qualificationData: JSON.stringify(scoring.breakdown),
+    },
+  });
+
+  // Dispatch lead.qualified webhook if score crossed 60 threshold
+  if (scoring.score >= 60 && prevScore < 60) {
+    const conv = await prisma.conversation.findUnique({
+      where: { id: conversation.id },
+      include: { agent: { select: { id: true, name: true } } },
+    });
+    dispatchWebhook(conv.agentId, "lead.qualified", {
+      agent: { id: conv.agent?.id, name: conv.agent?.name },
+      conversation: {
+        id: conv.id,
+        leadName: conv.leadName,
+        leadPhone: conv.leadPhone,
+        qualificationScore: conv.qualificationScore,
+      },
+      summary: conv.summary,
+    }).catch(err => console.error("[conversation-manager] lead.qualified webhook error:", err.message || err));
   }
 
   return { reply, conversation };
@@ -344,13 +424,34 @@ export async function processIncomingMessage({ agent, remoteJid, pushName, text,
 // closeConversation
 // ---------------------------------------------------------------------------
 export async function closeConversation(conversationId) {
-  return prisma.conversation.update({
+  const updated = await prisma.conversation.update({
     where: { id: conversationId },
     data: {
       status: "closed",
       closedAt: new Date(),
     },
   });
+
+  // Dispatch conversation.closed webhook
+  const conv = await prisma.conversation.findUnique({
+    where: { id: conversationId },
+    include: { agent: { select: { id: true, name: true } } },
+  });
+  if (conv) {
+    dispatchWebhook(conv.agentId, "conversation.closed", {
+      agent: { id: conv.agent?.id, name: conv.agent?.name },
+      conversation: {
+        id: conv.id,
+        leadName: conv.leadName,
+        leadPhone: conv.leadPhone,
+        qualificationScore: conv.qualificationScore,
+        csatScore: conv.csatScore,
+      },
+      summary: conv.summary,
+    }).catch(err => console.error("[conversation-manager] conversation.closed webhook error:", err.message || err));
+  }
+
+  return updated;
 }
 
 // ---------------------------------------------------------------------------
@@ -375,7 +476,10 @@ export async function generateSummary(conversationId) {
     content: m.content,
   }));
 
-  const summaryPrompt = `Resuma esta conversa de atendimento em português. Inclua: nome do cliente, empresa, o que precisa, dados coletados (telefone, email, etc), e por que a conversa foi escalada. Máximo 3-4 linhas objetivas.`;
+  const summaryPrompt = `Resuma esta conversa de atendimento em português. Inclua: nome do cliente, empresa, o que precisa, dados coletados (telefone, email, etc), e por que a conversa foi escalada. Máximo 3-4 linhas objetivas.
+
+Ao final, em uma linha separada, liste 1-3 tags relevantes da lista abaixo no formato: Tags: tag1, tag2
+Lista de tags: vendas, suporte, dúvida, reclamação, orçamento, urgente, agendamento, parceria`;
 
   try {
     const result = await chat({
@@ -388,11 +492,29 @@ export async function generateSummary(conversationId) {
     });
 
     if (result?.text) {
+      const lines = result.text.trim().split("\n");
+      let summaryText = result.text.trim();
+      let autoTags = [];
+
+      const tagsLine = lines.find(l => /^tags:\s*/i.test(l));
+      if (tagsLine) {
+        summaryText = lines.filter(l => !/^tags:\s*/i.test(l)).join("\n").trim();
+        const tagStr = tagsLine.replace(/^tags:\s*/i, "");
+        const validTags = ["vendas", "suporte", "dúvida", "reclamação", "orçamento", "urgente", "agendamento", "parceria"];
+        autoTags = tagStr.split(",").map(t => t.trim().toLowerCase()).filter(t => validTags.includes(t));
+      }
+
+      const updateData = { summary: summaryText };
+      if (autoTags.length > 0) {
+        const existingTags = conversation.tags ? JSON.parse(conversation.tags) : [];
+        updateData.tags = JSON.stringify([...new Set([...existingTags, ...autoTags])]);
+      }
+
       await prisma.conversation.update({
         where: { id: conversationId },
-        data: { summary: result.text.trim() },
+        data: updateData,
       });
-      return result.text.trim();
+      return summaryText;
     }
   } catch (err) {
     console.error("[conversation-manager] generateSummary error:", err.message || err);

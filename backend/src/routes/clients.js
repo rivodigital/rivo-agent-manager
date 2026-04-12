@@ -1,5 +1,6 @@
 import { Router } from "express";
 import { prisma } from "../db.js";
+import { requireRole } from "../middleware/rbac.js";
 
 const r = Router();
 
@@ -20,7 +21,7 @@ r.get("/", async (req, res) => {
   res.json(items);
 });
 
-r.post("/", async (req, res) => {
+r.post("/", requireRole("admin"), async (req, res) => {
   const { name, slug, segment, contactName, contactEmail, contactPhone, notes, status } = req.body;
   if (!name) return res.status(400).json({ error: "name required" });
   try {
@@ -45,7 +46,7 @@ r.get("/:id", async (req, res) => {
   res.json(c);
 });
 
-r.put("/:id", async (req, res) => {
+r.put("/:id", requireRole("admin"), async (req, res) => {
   try {
     const updated = await prisma.client.update({
       where: { id: req.params.id },
@@ -55,7 +56,7 @@ r.put("/:id", async (req, res) => {
   } catch (e) { res.status(400).json({ error: String(e.message) }); }
 });
 
-r.delete("/:id", async (req, res) => {
+r.delete("/:id", requireRole("admin"), async (req, res) => {
   try {
     await prisma.client.delete({ where: { id: req.params.id } });
     res.status(204).end();

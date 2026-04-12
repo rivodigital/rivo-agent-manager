@@ -1,15 +1,18 @@
 import { Router } from "express";
 import { prisma } from "../db.js";
 import { testConnection } from "../services/llm/connector.js";
+import { requireRole } from "../middleware/rbac.js";
 
 const r = Router();
+
+r.get("/", async (_req, res) => {
 
 r.get("/", async (_req, res) => {
   const items = await prisma.provider.findMany({ orderBy: { createdAt: "desc" } });
   res.json(items.map(p => ({ ...p, models: safeParse(p.models, []) })));
 });
 
-r.post("/", async (req, res) => {
+r.post("/", requireRole("admin"), async (req, res) => {
   const { name, label, apiKey, baseUrl, status, models } = req.body;
   if (!name || !label || !apiKey) return res.status(400).json({ error: "name, label, apiKey required" });
   try {
@@ -30,7 +33,7 @@ r.get("/:id", async (req, res) => {
   res.json({ ...p, models: safeParse(p.models, []) });
 });
 
-r.put("/:id", async (req, res) => {
+r.put("/:id", requireRole("admin"), async (req, res) => {
   const { name, label, apiKey, baseUrl, status, models } = req.body;
   try {
     const updated = await prisma.provider.update({
@@ -48,7 +51,7 @@ r.put("/:id", async (req, res) => {
   } catch (e) { res.status(400).json({ error: String(e.message) }); }
 });
 
-r.delete("/:id", async (req, res) => {
+r.delete("/:id", requireRole("admin"), async (req, res) => {
   try {
     await prisma.provider.delete({ where: { id: req.params.id } });
     res.status(204).end();
