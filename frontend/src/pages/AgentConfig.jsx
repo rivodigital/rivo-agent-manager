@@ -4,9 +4,9 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { get, put, post, del } from "../lib/api.js";
 import { useToast } from "../lib/toast.jsx";
 import Badge from "../components/ui/Badge.jsx";
-import { ArrowLeft, Save, Plus, Trash2, Wifi, WifiOff, QrCode, RefreshCw, Unplug, Bot } from "lucide-react";
+import { ArrowLeft, Save, Plus, Trash2, Wifi, WifiOff, QrCode, RefreshCw, Unplug, Bot, Clock } from "lucide-react";
 
-const TABS = ["Geral", "Prompt & Regras", "Conhecimento", "Canais", "WhatsApp", "Notas", "Métricas"];
+const TABS = ["Geral", "Prompt & Regras", "Conhecimento", "Canais", "WhatsApp", "Horários", "Notas", "Métricas"];
 
 export default function AgentConfig() {
   const { id } = useParams();
@@ -68,6 +68,7 @@ export default function AgentConfig() {
       {tab === "Conhecimento" && <TabKnowledge agent={agent} />}
       {tab === "Canais" && <TabChannels agent={agent} onSave={(d) => update.mutate(d)} loading={update.isPending} />}
       {tab === "WhatsApp" && <TabWhatsApp agent={agent} />}
+      {tab === "Horários" && <TabBusinessHours agent={agent} onSave={(d) => update.mutate(d)} loading={update.isPending} />}
       {tab === "Notas" && <TabNotes agent={agent} />}
       {tab === "Métricas" && <TabMetrics agent={agent} onSave={(d) => update.mutate(d)} loading={update.isPending} />}
     </div>
@@ -303,6 +304,159 @@ function TabChannels({ agent, onSave, loading }) {
         {err && <p className="text-xs text-red-500 mt-2">{err}</p>}
       </div>
       <button className="btn btn-primary" onClick={handleSave} disabled={loading}><Save size={16} /> Salvar</button>
+    </div>
+  );
+}
+
+function TabBusinessHours({ agent, onSave, loading }) {
+  const [bh, setBh] = useState(() => {
+    try {
+      return JSON.parse(agent.businessHours || "null") || {
+        timezone: "America/Sao_Paulo",
+        schedule: {
+          mon: { start: "08:00", end: "18:00", enabled: true },
+          tue: { start: "08:00", end: "18:00", enabled: true },
+          wed: { start: "08:00", end: "18:00", enabled: true },
+          thu: { start: "08:00", end: "18:00", enabled: true },
+          fri: { start: "08:00", end: "18:00", enabled: true },
+          sat: { start: "08:00", end: "12:00", enabled: false },
+          sun: { start: "08:00", end: "12:00", enabled: false },
+        },
+        offHoursMessage: "Olá! Nosso horário de atendimento é de segunda a sexta, das 8h às 18h. Deixe seu nome e o que precisa que retornamos assim que possível!",
+      };
+    } catch {
+      return {
+        timezone: "America/Sao_Paulo",
+        schedule: {
+          mon: { start: "08:00", end: "18:00", enabled: true },
+          tue: { start: "08:00", end: "18:00", enabled: true },
+          wed: { start: "08:00", end: "18:00", enabled: true },
+          thu: { start: "08:00", end: "18:00", enabled: true },
+          fri: { start: "08:00", end: "18:00", enabled: true },
+          sat: { start: "08:00", end: "12:00", enabled: false },
+          sun: { start: "08:00", end: "12:00", enabled: false },
+        },
+        offHoursMessage: "Olá! Nosso horário de atendimento é de segunda a sexta, das 8h às 18h. Deixe seu nome e o que precisa que retornamos assim que possível!",
+      };
+    }
+  });
+
+  const days = [
+    { key: "mon", label: "Segunda" },
+    { key: "tue", label: "Terça" },
+    { key: "wed", label: "Quarta" },
+    { key: "thu", label: "Quinta" },
+    { key: "fri", label: "Sexta" },
+    { key: "sat", label: "Sábado" },
+    { key: "sun", label: "Domingo" },
+  ];
+
+  const toggleDay = (key) => {
+    setBh(prev => ({
+      ...prev,
+      schedule: {
+        ...prev.schedule,
+        [key]: { ...prev.schedule[key], enabled: !prev.schedule[key].enabled },
+      },
+    }));
+  };
+
+  const setTime = (key, field, value) => {
+    setBh(prev => ({
+      ...prev,
+      schedule: {
+        ...prev.schedule,
+        [key]: { ...prev.schedule[key], [field]: value },
+      },
+    }));
+  };
+
+  const handleSave = () => {
+    const payload = {
+      ...bh,
+      schedule: Object.fromEntries(
+        Object.entries(bh.schedule).map(([k, v]) => [k, v.enabled ? { start: v.start, end: v.end } : null])
+      ),
+    };
+    onSave({ businessHours: JSON.stringify(payload) });
+  };
+
+  return (
+    <div className="card p-6 space-y-6">
+      <div className="flex items-center gap-3 mb-2">
+        <Clock size={18} className="text-brand-accent" />
+        <h3 className="font-sora text-lg font-semibold">Horário de Atendimento</h3>
+      </div>
+
+      <div>
+        <label className="label">Timezone</label>
+        <select
+          className="input max-w-[300px]"
+          value={bh.timezone}
+          onChange={(e) => setBh(prev => ({ ...prev, timezone: e.target.value }))}
+        >
+          <option value="America/Sao_Paulo">America/Sao_Paulo (Brasília)</option>
+          <option value="America/Manaus">America/Manaus (Amazonas)</option>
+          <option value="America/Noronha">America/Noronha (Fernando de Noronha)</option>
+          <option value="America/Rio_Branco">America/Rio_Branco (Acre)</option>
+          <option value="America/New_York">America/New_York (EST)</option>
+          <option value="America/Chicago">America/Chicago (CST)</option>
+          <option value="America/Los_Angeles">America/Los_Angeles (PST)</option>
+          <option value="Europe/Lisbon">Europe/Lisbon (WET)</option>
+        </select>
+      </div>
+
+      <div className="space-y-3">
+        {days.map(({ key, label }) => {
+          const day = bh.schedule[key];
+          return (
+            <div key={key} className="flex items-center gap-4">
+              <label className="flex items-center gap-2 min-w-[140px] cursor-pointer">
+                <input
+                  type="checkbox"
+                  checked={day.enabled}
+                  onChange={() => toggleDay(key)}
+                  className="w-4 h-4 rounded accent-brand-accent"
+                />
+                <span className="text-sm">{label}</span>
+              </label>
+              {day.enabled && (
+                <div className="flex items-center gap-2">
+                  <input
+                    type="time"
+                    className="input w-[120px]"
+                    value={day.start}
+                    onChange={(e) => setTime(key, "start", e.target.value)}
+                  />
+                  <span className="text-brand-muted text-sm">até</span>
+                  <input
+                    type="time"
+                    className="input w-[120px]"
+                    value={day.end}
+                    onChange={(e) => setTime(key, "end", e.target.value)}
+                  />
+                </div>
+              )}
+              {!day.enabled && (
+                <span className="text-xs text-brand-muted/50">Fechado</span>
+              )}
+            </div>
+          );
+        })}
+      </div>
+
+      <div>
+        <label className="label">Mensagem fora do expediente</label>
+        <textarea
+          className="input min-h-[100px] resize-none"
+          value={bh.offHoursMessage}
+          onChange={(e) => setBh(prev => ({ ...prev, offHoursMessage: e.target.value }))}
+        />
+      </div>
+
+      <button className="btn btn-primary" onClick={handleSave} disabled={loading}>
+        <Save size={16} /> Salvar
+      </button>
     </div>
   );
 }

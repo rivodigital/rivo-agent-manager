@@ -333,6 +333,8 @@ export async function processIncomingMessage({ agent, remoteJid, pushName, text,
       data: { status: "escalated" },
     });
     conversation.status = "escalated";
+    // Generate summary for warm handoff
+    generateSummary(conversation.id).catch(err => console.error("[conversation-manager] generateSummary async error:", err.message));
   }
 
   return { reply, conversation };
@@ -347,7 +349,55 @@ export async function closeConversation(conversationId) {
     data: {
       status: "closed",
       closedAt: new Date(),
-      summary: null, // TODO: generate summary via LLM
     },
   });
 }
+
+// ---------------------------------------------------------------------------
+// generateSummary
+// ---------------------------------------------------------------------------
+export async function generateSummary(conversationId) {
+  const conversation = await prisma.conversation.findUnique({
+    where: { id: conversationId },
+    include: {
+      agent: { include: { provider: true } },
+      messages: {
+        orderBy: { createdAt: "asc" },
+        take: 20,
+      },
+    },
+  });
+
+  if (!conversation) return null;
+
+  const messages = conversation.messages.map((m) => ({
+    role: m.role,
+    content: m.content,
+  }));
+
+  const summaryPrompt = `Resuma esta conversa de atendimento em português. Inclua: nome do cliente, empresa, o que precisa, dados coletados (telefone, email, etc), e por que a conversa foi escalada. Máximo 3-4 linhas objetivas.`;
+
+  try {
+    const result = await chat({
+      provider: conversation.agent.provider,
+      model: conversation.agent.model,
+      systemPrompt: summaryPrompt,
+      messages,
+      temperature: 0.3,
+      maxTokens: 512,
+    });
+
+    if (result?.text) {
+      await prisma.conversation.update({
+        where: { id: conversationId },
+        data: { summary: result.text.trim() },
+      });
+      return result.text.trim();
+    }
+  } catch (err) {
+    console.error("[conversation-manager] generateSummary error:", err.message || err);
+  }
+
+  return null;
+}
+

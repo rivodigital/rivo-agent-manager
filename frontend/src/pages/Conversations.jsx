@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { get, put, post } from "../lib/api.js";
+import { useToast } from "../lib/toast.jsx";
 import Badge from "../components/ui/Badge.jsx";
 import {
   MessageSquare,
@@ -13,6 +14,9 @@ import {
   XCircle,
   ArrowUpRight,
   CheckCircle,
+  RotateCcw,
+  StickyNote,
+  Star,
 } from "lucide-react";
 
 const STATUS_OPTIONS = [
@@ -25,6 +29,7 @@ const STATUS_OPTIONS = [
 
 export default function Conversations() {
   const qc = useQueryClient();
+  const toast = useToast();
   const [selectedId, setSelectedId] = useState(null);
   const [filterAgent, setFilterAgent] = useState("");
   const [filterStatus, setFilterStatus] = useState("");
@@ -64,6 +69,44 @@ export default function Conversations() {
       qc.invalidateQueries({ queryKey: ["conversations"] });
       qc.invalidateQueries({ queryKey: ["conversation-detail", selectedId] });
     },
+  });
+
+  const resumeBot = useMutation({
+    mutationFn: (id) => post(`/conversations/${id}/resume-bot`),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["conversations"] });
+      qc.invalidateQueries({ queryKey: ["conversation-detail", selectedId] });
+      toast("Bot retomado com sucesso");
+    },
+    onError: (e) => toast(e.response?.data?.error || "Erro ao retomar bot", "error"),
+  });
+
+  const addNote = useMutation({
+    mutationFn: ({ id, content }) => post(`/conversations/${id}/notes`, { content }),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["conversation-detail", selectedId] });
+      toast("Nota adicionada");
+    },
+    onError: (e) => toast(e.response?.data?.error || "Erro ao adicionar nota", "error"),
+  });
+
+  const resumeBot = useMutation({
+    mutationFn: (id) => post(`/conversations/${id}/resume-bot`),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["conversations"] });
+      qc.invalidateQueries({ queryKey: ["conversation-detail", selectedId] });
+      toast("Bot retomado com sucesso");
+    },
+    onError: (e) => toast(e.response?.data?.error || "Erro ao retomar bot", "error"),
+  });
+
+  const addNote = useMutation({
+    mutationFn: ({ id, content }) => post(`/conversations/${id}/notes`, { content }),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["conversation-detail", selectedId] });
+      toast("Nota adicionada");
+    },
+    onError: (e) => toast(e.response?.data?.error || "Erro ao adicionar nota", "error"),
   });
 
   const filtered = conversations.filter((c) => {
@@ -172,108 +215,15 @@ export default function Conversations() {
       </div>
 
       {selectedId && (
-        <div className="flex-1 flex flex-col card overflow-hidden">
-          {!detail ? (
-            <div className="flex-1 flex items-center justify-center text-brand-muted">carregando…</div>
-          ) : (
-            <>
-              <div className="flex items-center justify-between px-6 py-4 border-b border-brand-border/50">
-                <div className="min-w-0">
-                  <div className="font-medium flex items-center gap-2 text-sm">
-                    <User size={16} className="text-brand-muted" />
-                    {detail.leadName || "Sem nome"}
-                    <Badge status={detail.status} className="ml-2">{detail.status}</Badge>
-                  </div>
-                  <div className="text-xs text-brand-muted mt-1">
-                    {detail.leadPhone || detail.remoteJid}
-                    {detail.agent && <> · {detail.agent.name}</>}
-                    {detail.agent?.client && <> · {detail.agent.client.name}</>}
-                  </div>
-                </div>
-                <div className="flex items-center gap-2 shrink-0">
-                  {detail.status !== "closed" && (
-                    <>
-                      <button
-                        className="btn text-xs py-2"
-                        onClick={() => updateConv.mutate({ id: detail.id, data: { status: "qualified" } })}
-                      >
-                        <CheckCircle size={14} className="text-brand-accent" />
-                        Qualificar
-                      </button>
-                      <button
-                        className="btn text-xs py-2"
-                        onClick={() => updateConv.mutate({ id: detail.id, data: { status: "escalated" } })}
-                      >
-                        <ArrowUpRight size={14} className="text-yellow-500" />
-                        Escalar
-                      </button>
-                      <button
-                        className="btn text-xs py-2"
-                        onClick={() => closeConv.mutate(detail.id)}
-                      >
-                        <XCircle size={14} className="text-red-500" />
-                        Fechar
-                      </button>
-                    </>
-                  )}
-                  <button onClick={() => setSelectedId(null)} className="text-brand-muted hover:text-brand-white transition ml-2">
-                    <X size={20} />
-                  </button>
-                </div>
-              </div>
-
-              <div className="flex-1 overflow-y-auto p-5 space-y-4">
-                {detail.messages?.map((m) => (
-                  <div
-                    key={m.id}
-                    className={`flex ${m.role === "user" ? "justify-start" : "justify-end"}`}
-                  >
-                    <div
-                      className={`max-w-[75%] rounded-2xl px-5 py-3 ${
-                        m.role === "user"
-                          ? "bg-brand-surface border border-brand-border"
-                          : "bg-brand-accent/10 border border-brand-accent/30"
-                      }`}
-                    >
-                      <p className="text-sm text-brand-white/90 whitespace-pre-wrap">{m.content}</p>
-                      <div className="text-[10px] font-mono text-brand-muted/60 mt-2 text-right">
-                        {new Date(m.createdAt).toLocaleTimeString("pt-BR", {
-                          hour: "2-digit", minute: "2-digit",
-                        })}
-                      </div>
-                    </div>
-                  </div>
-                ))}
-                {(!detail.messages || detail.messages.length === 0) && (
-                  <div className="text-brand-muted text-sm text-center py-12">Sem mensagens.</div>
-                )}
-              </div>
-
-              {detail.qualificationData && (
-                <div className="border-t border-brand-border/50 px-6 py-4">
-                  <div className="text-[11px] font-mono uppercase tracking-wider text-brand-muted mb-3">
-                    Dados de Qualificação
-                    {detail.qualificationScore != null && (
-                      <span className="text-brand-accent ml-3">Score: {detail.qualificationScore}</span>
-                    )}
-                  </div>
-                  <div className="grid grid-cols-2 gap-3 text-xs text-brand-muted">
-                    {(() => {
-                      try {
-                        const d = JSON.parse(detail.qualificationData);
-                        return Object.entries(d).map(([k, v]) => (
-                          <div key={k}>
-                            <span className="text-brand-muted/60 capitalize">{k}:</span> {v}
-                          </div>
-                        ));
-                      } catch { return null; }
-                    })()}
-                  </div>
-                </div>
-              )}
-            </>
-          )}
-        </div>
+        <ConversationDetail
+          detail={detail}
+          qc={qc}
+          closeConv={closeConv}
+          updateConv={updateConv}
+          resumeBot={resumeBot}
+          addNote={addNote}
+          onClose={() => setSelectedId(null)}
+        />
       )}
 
       {!selectedId && conversations.length > 0 && (
@@ -281,6 +231,386 @@ export default function Conversations() {
           <div className="text-center">
             <MessageSquare size={48} className="text-brand-muted/20 mx-auto mb-4" />
             <p className="text-brand-muted text-sm">Selecione uma conversa para ver o histórico</p>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+function ConversationDetail({ detail, qc, closeConv, updateConv, resumeBot, addNote, onClose }) {
+  const [noteText, setNoteText] = useState("");
+
+  if (!detail) {
+    return (
+      <div className="flex-1 flex flex-col card overflow-hidden">
+        <div className="flex-1 flex items-center justify-center text-brand-muted">carregando…</div>
+      </div>
+    );
+  }
+
+  const hasHumanTakeover = detail.lastHumanMessageAt &&
+    (Date.now() - new Date(detail.lastHumanMessageAt).getTime()) < 30 * 60 * 1000;
+  const showResumeBot = detail.status === "escalated" || hasHumanTakeover;
+
+  const csatStars = detail.csatScore ? "⭐".repeat(detail.csatScore) : null;
+
+  return (
+    <div className="flex-1 flex flex-col card overflow-hidden">
+      <div className="flex items-center justify-between px-6 py-4 border-b border-brand-border/50">
+        <div className="min-w-0">
+          <div className="font-medium flex items-center gap-2 text-sm">
+            <User size={16} className="text-brand-muted" />
+            {detail.leadName || "Sem nome"}
+            <Badge status={detail.status} className="ml-2">{detail.status}</Badge>
+            {csatStars && (
+              <span className="text-xs ml-2" title={`CSAT: ${detail.csatScore}/5`}>{csatStars}</span>
+            )}
+          </div>
+          <div className="text-xs text-brand-muted mt-1">
+            {detail.leadPhone || detail.remoteJid}
+            {detail.agent && <> · {detail.agent.name}</>}
+            {detail.agent?.client && <> · {detail.agent.client.name}</>}
+          </div>
+        </div>
+        <div className="flex items-center gap-2 shrink-0">
+          {showResumeBot && (
+            <button
+              className="btn text-xs py-2"
+              onClick={() => resumeBot.mutate(detail.id)}
+              disabled={resumeBot.isPending}
+            >
+              <RotateCcw size={14} className="text-green-500" />
+              Retomar Bot
+            </button>
+          )}
+          {detail.status !== "closed" && (
+            <>
+              <button
+                className="btn text-xs py-2"
+                onClick={() => updateConv.mutate({ id: detail.id, data: { status: "qualified" } })}
+              >
+                <CheckCircle size={14} className="text-brand-accent" />
+                Qualificar
+              </button>
+              <button
+                className="btn text-xs py-2"
+                onClick={() => updateConv.mutate({ id: detail.id, data: { status: "escalated" } })}
+              >
+                <ArrowUpRight size={14} className="text-yellow-500" />
+                Escalar
+              </button>
+              <button
+                className="btn text-xs py-2"
+                onClick={() => closeConv.mutate(detail.id)}
+              >
+                <XCircle size={14} className="text-red-500" />
+                Fechar
+              </button>
+            </>
+          )}
+          <button onClick={onClose} className="text-brand-muted hover:text-brand-white transition ml-2">
+            <X size={20} />
+          </button>
+        </div>
+      </div>
+
+      {detail.summary && (
+        <div className="px-6 py-3 bg-blue-900/20 border-b border-blue-500/20">
+          <div className="flex items-start gap-2">
+            <StickyNote size={14} className="text-blue-400 mt-0.5 shrink-0" />
+            <div>
+              <div className="text-[11px] font-mono uppercase tracking-wider text-blue-400 mb-1">Resumo para atendimento</div>
+              <p className="text-xs text-blue-100/80 whitespace-pre-wrap">{detail.summary}</p>
+            </div>
+          </div>
+        </div>
+      )}
+
+      <div className="flex-1 overflow-y-auto p-5 space-y-4">
+        {detail.messages?.map((m) => {
+          if (m.role === "note") {
+            return (
+              <div key={m.id} className="flex justify-center">
+                <div className="max-w-[75%] rounded-2xl px-5 py-3 bg-yellow-900/20 border border-yellow-500/30">
+                  <div className="flex items-center gap-2 mb-1">
+                    <StickyNote size={12} className="text-yellow-500" />
+                    <span className="text-[10px] font-mono text-yellow-500/80">Nota interna</span>
+                  </div>
+                  <p className="text-sm text-yellow-100/80 whitespace-pre-wrap">{m.content}</p>
+                  <div className="text-[10px] font-mono text-brand-muted/60 mt-2 text-right">
+                    {new Date(m.createdAt).toLocaleTimeString("pt-BR", {
+                      hour: "2-digit", minute: "2-digit",
+                    })}
+                  </div>
+                </div>
+              </div>
+            );
+          }
+
+          return (
+            <div
+              key={m.id}
+              className={`flex ${m.role === "user" ? "justify-start" : "justify-end"}`}
+            >
+              <div
+                className={`max-w-[75%] rounded-2xl px-5 py-3 ${
+                  m.role === "user"
+                    ? "bg-brand-surface border border-brand-border"
+                    : "bg-brand-accent/10 border border-brand-accent/30"
+                }`}
+              >
+                <p className="text-sm text-brand-white/90 whitespace-pre-wrap">{m.content}</p>
+                <div className="text-[10px] font-mono text-brand-muted/60 mt-2 text-right">
+                  {new Date(m.createdAt).toLocaleTimeString("pt-BR", {
+                    hour: "2-digit", minute: "2-digit",
+                  })}
+                </div>
+              </div>
+            </div>
+          );
+        })}
+        {(!detail.messages || detail.messages.length === 0) && (
+          <div className="text-brand-muted text-sm text-center py-12">Sem mensagens.</div>
+        )}
+      </div>
+
+      <div className="border-t border-brand-border/50 px-6 py-3">
+        <div className="flex gap-2">
+          <input
+            className="input flex-1 text-sm"
+            placeholder="Adicionar nota interna…"
+            value={noteText}
+            onChange={(e) => setNoteText(e.target.value)}
+            onKeyDown={(e) => {
+              if (e.key === "Enter" && noteText.trim()) {
+                addNote.mutate({ id: detail.id, content: noteText });
+                setNoteText("");
+              }
+            }}
+          />
+          <button
+            className="btn btn-ghost text-xs"
+            disabled={!noteText.trim() || addNote.isPending}
+            onClick={() => {
+              addNote.mutate({ id: detail.id, content: noteText });
+              setNoteText("");
+            }}
+          >
+            <StickyNote size={14} /> Nota
+          </button>
+        </div>
+      </div>
+
+      {detail.qualificationData && (
+        <div className="border-t border-brand-border/50 px-6 py-4">
+          <div className="text-[11px] font-mono uppercase tracking-wider text-brand-muted mb-3">
+            Dados de Qualificação
+            {detail.qualificationScore != null && (
+              <span className="text-brand-accent ml-3">Score: {detail.qualificationScore}</span>
+            )}
+          </div>
+          <div className="grid grid-cols-2 gap-3 text-xs text-brand-muted">
+            {(() => {
+              try {
+                const d = JSON.parse(detail.qualificationData);
+                return Object.entries(d).map(([k, v]) => (
+                  <div key={k}>
+                    <span className="text-brand-muted/60 capitalize">{k}:</span> {v}
+                  </div>
+                ));
+              } catch { return null; }
+            })()}
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+function ConversationDetail({ detail, qc, closeConv, updateConv, resumeBot, addNote, onClose }) {
+  const [noteText, setNoteText] = useState("");
+
+  if (!detail) {
+    return (
+      <div className="flex-1 flex flex-col card overflow-hidden">
+        <div className="flex-1 flex items-center justify-center text-brand-muted">carregando…</div>
+      </div>
+    );
+  }
+
+  const hasHumanTakeover = detail.lastHumanMessageAt &&
+    (Date.now() - new Date(detail.lastHumanMessageAt).getTime()) < 30 * 60 * 1000;
+  const showResumeBot = detail.status === "escalated" || hasHumanTakeover;
+
+  const csatStars = detail.csatScore ? "⭐".repeat(detail.csatScore) : null;
+
+  return (
+    <div className="flex-1 flex flex-col card overflow-hidden">
+      <div className="flex items-center justify-between px-6 py-4 border-b border-brand-border/50">
+        <div className="min-w-0">
+          <div className="font-medium flex items-center gap-2 text-sm">
+            <User size={16} className="text-brand-muted" />
+            {detail.leadName || "Sem nome"}
+            <Badge status={detail.status} className="ml-2">{detail.status}</Badge>
+            {csatStars && (
+              <span className="text-xs ml-2" title={`CSAT: ${detail.csatScore}/5`}>{csatStars}</span>
+            )}
+          </div>
+          <div className="text-xs text-brand-muted mt-1">
+            {detail.leadPhone || detail.remoteJid}
+            {detail.agent && <> · {detail.agent.name}</>}
+            {detail.agent?.client && <> · {detail.agent.client.name}</>}
+          </div>
+        </div>
+        <div className="flex items-center gap-2 shrink-0">
+          {showResumeBot && (
+            <button
+              className="btn text-xs py-2"
+              onClick={() => resumeBot.mutate(detail.id)}
+              disabled={resumeBot.isPending}
+            >
+              <RotateCcw size={14} className="text-green-500" />
+              Retomar Bot
+            </button>
+          )}
+          {detail.status !== "closed" && (
+            <>
+              <button
+                className="btn text-xs py-2"
+                onClick={() => updateConv.mutate({ id: detail.id, data: { status: "qualified" } })}
+              >
+                <CheckCircle size={14} className="text-brand-accent" />
+                Qualificar
+              </button>
+              <button
+                className="btn text-xs py-2"
+                onClick={() => updateConv.mutate({ id: detail.id, data: { status: "escalated" } })}
+              >
+                <ArrowUpRight size={14} className="text-yellow-500" />
+                Escalar
+              </button>
+              <button
+                className="btn text-xs py-2"
+                onClick={() => closeConv.mutate(detail.id)}
+              >
+                <XCircle size={14} className="text-red-500" />
+                Fechar
+              </button>
+            </>
+          )}
+          <button onClick={onClose} className="text-brand-muted hover:text-brand-white transition ml-2">
+            <X size={20} />
+          </button>
+        </div>
+      </div>
+
+      {detail.summary && (
+        <div className="px-6 py-3 bg-blue-900/20 border-b border-blue-500/20">
+          <div className="flex items-start gap-2">
+            <StickyNote size={14} className="text-blue-400 mt-0.5 shrink-0" />
+            <div>
+              <div className="text-[11px] font-mono uppercase tracking-wider text-blue-400 mb-1">Resumo para atendimento</div>
+              <p className="text-xs text-blue-100/80 whitespace-pre-wrap">{detail.summary}</p>
+            </div>
+          </div>
+        </div>
+      )}
+
+      <div className="flex-1 overflow-y-auto p-5 space-y-4">
+        {detail.messages?.map((m) => {
+          if (m.role === "note") {
+            return (
+              <div key={m.id} className="flex justify-center">
+                <div className="max-w-[75%] rounded-2xl px-5 py-3 bg-yellow-900/20 border border-yellow-500/30">
+                  <div className="flex items-center gap-2 mb-1">
+                    <StickyNote size={12} className="text-yellow-500" />
+                    <span className="text-[10px] font-mono text-yellow-500/80">Nota interna</span>
+                  </div>
+                  <p className="text-sm text-yellow-100/80 whitespace-pre-wrap">{m.content}</p>
+                  <div className="text-[10px] font-mono text-brand-muted/60 mt-2 text-right">
+                    {new Date(m.createdAt).toLocaleTimeString("pt-BR", {
+                      hour: "2-digit", minute: "2-digit",
+                    })}
+                  </div>
+                </div>
+              </div>
+            );
+          }
+
+          return (
+            <div
+              key={m.id}
+              className={`flex ${m.role === "user" ? "justify-start" : "justify-end"}`}
+            >
+              <div
+                className={`max-w-[75%] rounded-2xl px-5 py-3 ${
+                  m.role === "user"
+                    ? "bg-brand-surface border border-brand-border"
+                    : "bg-brand-accent/10 border border-brand-accent/30"
+                }`}
+              >
+                <p className="text-sm text-brand-white/90 whitespace-pre-wrap">{m.content}</p>
+                <div className="text-[10px] font-mono text-brand-muted/60 mt-2 text-right">
+                  {new Date(m.createdAt).toLocaleTimeString("pt-BR", {
+                    hour: "2-digit", minute: "2-digit",
+                  })}
+                </div>
+              </div>
+            </div>
+          );
+        })}
+        {(!detail.messages || detail.messages.length === 0) && (
+          <div className="text-brand-muted text-sm text-center py-12">Sem mensagens.</div>
+        )}
+      </div>
+
+      <div className="border-t border-brand-border/50 px-6 py-3">
+        <div className="flex gap-2">
+          <input
+            className="input flex-1 text-sm"
+            placeholder="Adicionar nota interna…"
+            value={noteText}
+            onChange={(e) => setNoteText(e.target.value)}
+            onKeyDown={(e) => {
+              if (e.key === "Enter" && noteText.trim()) {
+                addNote.mutate({ id: detail.id, content: noteText });
+                setNoteText("");
+              }
+            }}
+          />
+          <button
+            className="btn btn-ghost text-xs"
+            disabled={!noteText.trim() || addNote.isPending}
+            onClick={() => {
+              addNote.mutate({ id: detail.id, content: noteText });
+              setNoteText("");
+            }}
+          >
+            <StickyNote size={14} /> Nota
+          </button>
+        </div>
+      </div>
+
+      {detail.qualificationData && (
+        <div className="border-t border-brand-border/50 px-6 py-4">
+          <div className="text-[11px] font-mono uppercase tracking-wider text-brand-muted mb-3">
+            Dados de Qualificação
+            {detail.qualificationScore != null && (
+              <span className="text-brand-accent ml-3">Score: {detail.qualificationScore}</span>
+            )}
+          </div>
+          <div className="grid grid-cols-2 gap-3 text-xs text-brand-muted">
+            {(() => {
+              try {
+                const d = JSON.parse(detail.qualificationData);
+                return Object.entries(d).map(([k, v]) => (
+                  <div key={k}>
+                    <span className="text-brand-muted/60 capitalize">{k}:</span> {v}
+                  </div>
+                ));
+              } catch { return null; }
+            })()}
           </div>
         </div>
       )}

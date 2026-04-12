@@ -73,6 +73,7 @@ model Agent {
   clientValueMetric     String?
 
   status                String          @default("draft")
+  businessHours         String?
 
   knowledgeFiles        KnowledgeFile[]
   agentNotes            AgentNote[]
@@ -132,6 +133,7 @@ model Conversation {
   assignedTo         String?
   summary            String?
   lastHumanMessageAt DateTime?
+  csatScore          Int?
   messages           Message[]
   startedAt          DateTime  @default(now())
   lastMessageAt      DateTime  @default(now())

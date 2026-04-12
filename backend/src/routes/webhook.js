@@ -4,6 +4,7 @@ import { processIncomingMessage } from "../services/conversation-manager.js";
 import { sendText, sendPresence, jidToNumber, stripDataUrl, getMediaBase64 } from "../services/evolution.js";
 import { transcribeAudio, analyzeImage } from "../services/transcribe.js";
 import { splitMessage, calculateDelay } from "../services/message-utils.js";
+import { isWithinBusinessHours } from "../services/business-hours.js";
 
 const r = Router();
 
@@ -78,6 +79,35 @@ async function flushBuffer(entry) {
     const existingConv = await prisma.conversation.findFirst({
       where: { agentId: agent.id, remoteJid },
     });
+
+    // CSAT capture — se conversa fechada e csatScore ainda não definido
+    if (existingConv?.status === "closed" && existingConv.csatScore == null && messageType === "text") {
+      const score = parseInt(aggregatedText.trim(), 10);
+      if (score >= 1 && score <= 5) {
+        await prisma.conversation.update({
+          where: { id: existingConv.id },
+          data: { csatScore: score },
+        });
+        console.log(`[webhook] CSAT registrado: ${score}/5 para conv=${existingConv.id}`);
+        const number = jidToNumber(remoteJid);
+        const thankYou = "Obrigado pela avaliação! 🙏";
+        await sendPresence(instanceName, number, calculateDelay(thankYou));
+        await new Promise(r => setTimeout(r, calculateDelay(thankYou)));
+        await sendText(instanceName, number, thankYou);
+        return;
+      } else {
+        // Não é número 1-5 — conversa fechada, não responder
+        console.log(`[webhook] conversa fechada, resposta não é CSAT válido — ignorando`);
+        return;
+      }
+    }
+
+    // Se conversa fechada e já tem CSAT — não responder
+    if (existingConv?.status === "closed") {
+      console.log(`[webhook] conversa fechada com CSAT — ignorando mensagem`);
+      return;
+    }
+
     if (existingConv?.lastHumanMessageAt) {
       const elapsed = Date.now() - existingConv.lastHumanMessageAt.getTime();
       if (elapsed < HUMAN_TAKEOVER_MINUTES * 60 * 1000) {
@@ -85,6 +115,36 @@ async function flushBuffer(entry) {
         console.log(`[webhook] bot pausado — humano ativo há ${mins}min (limite: ${HUMAN_TAKEOVER_MINUTES}min)`);
         return;
       }
+    }
+
+    // Business hours check
+    const bhCheck = isWithinBusinessHours(agent);
+    if (!bhCheck.within) {
+      // Salva mensagem do usuário no DB
+      const conv = await prisma.conversation.findFirst({
+        where: { agentId: agent.id, remoteJid },
+      });
+      if (conv) {
+        await prisma.message.create({
+          data: {
+            conversationId: conv.id,
+            role: "user",
+            content: aggregatedText,
+            messageType: "text",
+            whatsappMsgId,
+          },
+        });
+      }
+
+      // Envia offHoursMessage com typing indicator + delay
+      const offMsg = bhCheck.offHoursMessage || "No momento não estamos disponíveis. Retornaremos em breve!";
+      const number = jidToNumber(remoteJid);
+      const delay = calculateDelay(offMsg);
+      await sendPresence(instanceName, number, delay);
+      await new Promise(r => setTimeout(r, delay));
+      await sendText(instanceName, number, offMsg);
+      console.log(`[webhook] fora do expediente — offHoursMessage enviada`);
+      return;
     }
 
     const { reply } = await processIncomingMessage({
