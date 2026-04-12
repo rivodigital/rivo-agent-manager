@@ -68,6 +68,18 @@ export async function sendText(instanceName, number, text) {
   return data;
 }
 
+export async function sendPresence(instanceName, number, delayMs = 3000) {
+  try {
+    await client().post(`/chat/sendPresence/${instanceName}`, {
+      number,
+      delay: delayMs,
+      presence: "composing",
+    });
+  } catch (err) {
+    console.error("[evolution] sendPresence error:", err.message || err);
+  }
+}
+
 // Converte remoteJid "5547999999999@s.whatsapp.net" → "5547999999999"
 // Baixa o conteúdo binário (base64) de uma mensagem de mídia (áudio, imagem, etc)
 // `messagePayload` é o `data` que veio no webhook messages.upsert

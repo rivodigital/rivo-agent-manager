@@ -1,8 +1,9 @@
 import { Router } from "express";
 import { prisma } from "../db.js";
 import { processIncomingMessage } from "../services/conversation-manager.js";
-import { sendText, jidToNumber, stripDataUrl, getMediaBase64 } from "../services/evolution.js";
+import { sendText, sendPresence, jidToNumber, stripDataUrl, getMediaBase64 } from "../services/evolution.js";
 import { transcribeAudio, analyzeImage } from "../services/transcribe.js";
+import { splitMessage, calculateDelay } from "../services/message-utils.js";
 
 const r = Router();
 
@@ -100,7 +101,13 @@ async function flushBuffer(entry) {
 
     if (trimmed) {
       const number = jidToNumber(remoteJid);
-      await sendText(instanceName, number, trimmed);
+      const chunks = splitMessage(trimmed);
+      for (const chunk of chunks) {
+        const delay = calculateDelay(chunk);
+        await sendPresence(instanceName, number, delay);
+        await new Promise(r => setTimeout(r, delay));
+        await sendText(instanceName, number, chunk);
+      }
     } else {
       console.warn(`[webhook] reply vazia — nada enviado para ${remoteJid}`);
     }

@@ -77,6 +77,41 @@ export function buildSystemPrompt(agent) {
   return parts.filter(Boolean).join("\n");
 }
 
+function similarity(a, b) {
+  const normalize = s => s.toLowerCase().replace(/[^\w\s]/g, '').trim();
+  const na = normalize(a), nb = normalize(b);
+  if (na === nb) return 1;
+  if (na.length < 2 || nb.length < 2) return 0;
+  const bigrams = s => {
+    const set = new Map();
+    for (let i = 0; i < s.length - 1; i++) {
+      const bi = s.slice(i, i + 2);
+      set.set(bi, (set.get(bi) || 0) + 1);
+    }
+    return set;
+  };
+  const bg1 = bigrams(na), bg2 = bigrams(nb);
+  let inter = 0;
+  for (const [bi, c1] of bg1) inter += Math.min(c1, bg2.get(bi) || 0);
+  return (2 * inter) / (na.length - 1 + nb.length - 1);
+}
+
+function checkRepetition(reply, history) {
+  const lastAssistant = history
+    .filter(m => m.role === "assistant")
+    .slice(-3)
+    .map(m => m.content);
+
+  for (const prev of lastAssistant) {
+    const score = similarity(reply, prev);
+    if (score > 0.8) {
+      console.warn(`[conversation-manager] repeticao detectada (similarity=${score.toFixed(2)}). Bloqueando envio.`);
+      return true;
+    }
+  }
+  return false;
+}
+
 // ---------------------------------------------------------------------------
 // evaluateEscalation
 // ---------------------------------------------------------------------------
@@ -256,6 +291,11 @@ export async function processIncomingMessage({ agent, remoteJid, pushName, text,
   try {
     if (!result) throw lastErr || new Error("nenhum modelo respondeu");
     reply = result.text;
+
+    // Check for repetition before saving
+    if (checkRepetition(reply, history)) {
+      return { reply: null, conversation };
+    }
 
     // Save assistant message
     await prisma.message.create({
