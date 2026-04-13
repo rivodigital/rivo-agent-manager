@@ -12,6 +12,23 @@ import Conversations from "./pages/Conversations.jsx";
 import Blocklist from "./pages/Blocklist.jsx";
 import Users from "./pages/Users.jsx";
 
+// DEBUG: find undefined component
+console.log("[DEBUG-APP] Routes:", typeof Routes);
+console.log("[DEBUG-APP] Route:", typeof Route);
+console.log("[DEBUG-APP] Navigate:", typeof Navigate);
+console.log("[DEBUG-APP] Layout:", typeof Layout);
+console.log("[DEBUG-APP] ProtectedRoute:", typeof ProtectedRoute);
+console.log("[DEBUG-APP] Login:", typeof Login);
+console.log("[DEBUG-APP] Dashboard:", typeof Dashboard);
+console.log("[DEBUG-APP] Clients:", typeof Clients);
+console.log("[DEBUG-APP] ClientDetail:", typeof ClientDetail);
+console.log("[DEBUG-APP] AgentConfig:", typeof AgentConfig);
+console.log("[DEBUG-APP] Agents:", typeof Agents);
+console.log("[DEBUG-APP] Providers:", typeof Providers);
+console.log("[DEBUG-APP] Conversations:", typeof Conversations);
+console.log("[DEBUG-APP] Blocklist:", typeof Blocklist);
+console.log("[DEBUG-APP] Users:", typeof Users);
+
 export default function App() {
   return (
     <Routes>
