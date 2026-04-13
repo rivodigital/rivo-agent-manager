@@ -33,7 +33,7 @@ export default function Login() {
       <div className="absolute inset-0 pointer-events-none">
         <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[800px] h-[800px] bg-brand-accent/[0.03] rounded-full blur-[200px]"></div>
         <div className="absolute top-[20%] right-[10%] w-64 h-64 border border-brand-white/[0.04] rounded-full"></div>
-        <div className="absolute bottom-[30%] left-[15%] w-32 h-32 border border-brand-white/[0.03]" style="border-radius: 30% 70% 70% 30% / 30% 30% 70% 70%"></div>
+        <div className="absolute bottom-[30%] left-[15%] w-32 h-32 border border-brand-white/[0.03]" style={{ borderRadius: "30% 70% 70% 30% / 30% 30% 70% 70%" }}></div>
       </div>
       
       <div className="relative z-10 w-full max-w-md px-6">
