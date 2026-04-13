@@ -666,6 +666,54 @@ function TabWhatsApp({ agent }) {
       </div>
     </div>
   );
+  }
+
+  // Connected state
+  return (
+    <div className="card p-6 space-y-5">
+      <div className="flex items-center justify-between">
+        <div className="flex items-center gap-4">
+          <div className="w-12 h-12 rounded-xl bg-brand-accent/10 border border-brand-accent/20 flex items-center justify-center">
+            <Wifi size={22} className="text-brand-accent" />
+          </div>
+          <div>
+            <div className="font-medium flex items-center gap-3">
+              {instance.instanceName}
+              <span className="badge badge-success text-[10px]">Conectado</span>
+            </div>
+            {currentPhone && (
+              <div className="text-xs text-brand-muted mt-1">+{currentPhone}</div>
+            )}
+          </div>
+        </div>
+      </div>
+
+      {instance.connectedAt && (
+        <div className="text-xs text-brand-muted">
+          Conectado desde: {new Date(instance.connectedAt).toLocaleString("pt-BR")}
+        </div>
+      )}
+
+      <div className="flex gap-3 pt-2">
+        <button
+          className="btn"
+          onClick={() => reconnect.mutate(instance.id)}
+          disabled={reconnect.isPending}
+        >
+          <RefreshCw size={16} />
+          Reconectar
+        </button>
+        <button
+          className="btn btn-ghost hover:text-red-500 hover:border-red-500/20"
+          onClick={() => confirm("Desconectar WhatsApp? O agente parará de responder.") && deleteInstance.mutate(instance.id)}
+          disabled={deleteInstance.isPending}
+        >
+          <Unplug size={16} />
+          Desconectar
+        </button>
+      </div>
+    </div>
+  );
 }
 
 function TabFollowUps({ agent, onSave, loading }) {
@@ -988,52 +1036,5 @@ function WebhookForm({ initial, onSubmit, onCancel, loading }) {
         <button type="button" className="btn" onClick={onCancel}>Cancelar</button>
       </div>
     </form>
-  );
-}
-
-  return (
-    <div className="card p-6 space-y-5">
-      <div className="flex items-center justify-between">
-        <div className="flex items-center gap-4">
-          <div className="w-12 h-12 rounded-xl bg-brand-accent/10 border border-brand-accent/20 flex items-center justify-center">
-            <Wifi size={22} className="text-brand-accent" />
-          </div>
-          <div>
-            <div className="font-medium flex items-center gap-3">
-              {instance.instanceName}
-              <span className="badge badge-success text-[10px]">Conectado</span>
-            </div>
-            {currentPhone && (
-              <div className="text-xs text-brand-muted mt-1">+{currentPhone}</div>
-            )}
-          </div>
-        </div>
-      </div>
-
-      {instance.connectedAt && (
-        <div className="text-xs text-brand-muted">
-          Conectado desde: {new Date(instance.connectedAt).toLocaleString("pt-BR")}
-        </div>
-      )}
-
-      <div className="flex gap-3 pt-2">
-        <button
-          className="btn"
-          onClick={() => reconnect.mutate(instance.id)}
-          disabled={reconnect.isPending}
-        >
-          <RefreshCw size={16} />
-          Reconectar
-        </button>
-        <button
-          className="btn btn-ghost hover:text-red-500 hover:border-red-500/20"
-          onClick={() => confirm("Desconectar WhatsApp? O agente parará de responder.") && deleteInstance.mutate(instance.id)}
-          disabled={deleteInstance.isPending}
-        >
-          <Unplug size={16} />
-          Desconectar
-        </button>
-      </div>
-    </div>
   );
 }
