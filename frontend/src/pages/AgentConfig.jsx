@@ -787,6 +787,7 @@ const WEBHOOK_EVENTS = [
 
 function TabWebhooks({ agent }) {
   const qc = useQueryClient();
+  const toast = useToast();
   const [adding, setAdding] = useState(false);
   const [editing, setEditing] = useState(null);
   const [testing, setTesting] = useState(null);
