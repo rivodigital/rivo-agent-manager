@@ -2,7 +2,7 @@ import { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { get, post, put, del } from "../lib/api.js";
 import { useToast } from "../lib/toast.jsx";
-import { Users, Plus, Pencil, Trash2 } from "lucide-react";
+import { Users as UsersIcon, Plus, Pencil, Trash2 } from "lucide-react";
 
 const ROLES = [
   { value: "admin", label: "Admin" },
@@ -78,7 +78,7 @@ export default function Users() {
     <div className="space-y-8">
       <header>
         <h1 className="font-sora text-2xl font-bold tracking-tight flex items-center gap-3">
-          <Users size={24} className="text-brand-accent" />
+          <UsersIcon size={24} className="text-brand-accent" />
           Usuários
         </h1>
         <p className="text-brand-muted text-sm mt-1">Gerencie usuários e permissões do sistema.</p>
