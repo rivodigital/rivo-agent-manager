@@ -6,13 +6,15 @@ export default {
     extend: {
       colors: {
         brand: {
-          black: "#0a0a0f",
-          white: "#ffffff",
-          accent: "#4ade80",
-          muted: "#71717a",
-          dark: "#09090b",
-          surface: "#111114",
-          border: "rgba(255,255,255,0.06)",
+          // Semantic light-mode palette. Names kept for backwards compat:
+          // "black" = canvas bg (lightest), "white" = ink (darkest text).
+          black: "#f8fafc",   // canvas — main page bg (slate-50)
+          white: "#0f172a",   // ink — primary text (slate-900)
+          accent: "#16a34a",  // green-600 — stronger on light bg
+          muted: "#64748b",   // slate-500 — secondary text
+          dark: "#e2e8f0",    // slate-200 — deeper subtle bg
+          surface: "#ffffff", // cards bg — pure white
+          border: "#e2e8f0",  // slate-200 — subtle, visible border
         },
       },
       fontFamily: {

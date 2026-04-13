@@ -31,11 +31,9 @@ export default function Login() {
   return (
     <div className="min-h-screen flex items-center justify-center bg-brand-black relative overflow-hidden">
       <div className="absolute inset-0 pointer-events-none">
-        <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[800px] h-[800px] bg-brand-accent/[0.03] rounded-full blur-[200px]"></div>
-        <div className="absolute top-[20%] right-[10%] w-64 h-64 border border-brand-white/[0.04] rounded-full"></div>
-        <div className="absolute bottom-[30%] left-[15%] w-32 h-32 border border-brand-white/[0.03]" style={{ borderRadius: "30% 70% 70% 30% / 30% 30% 70% 70%" }}></div>
+        <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[800px] h-[800px] bg-brand-accent/[0.06] rounded-full blur-[180px]"></div>
       </div>
-      
+
       <div className="relative z-10 w-full max-w-md px-6">
         <div className="text-center mb-10">
           <div className="w-16 h-16 rounded-2xl bg-brand-accent/10 border border-brand-accent/20 flex items-center justify-center mx-auto mb-4">

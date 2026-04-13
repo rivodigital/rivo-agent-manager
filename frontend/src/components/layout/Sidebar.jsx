@@ -16,7 +16,7 @@ const links = [
 export default function Sidebar() {
   const { user, logout } = useAuth();
   return (
-    <aside className="w-64 shrink-0 border-r border-brand-border/50 flex flex-col bg-brand-black/50 backdrop-blur-xl">
+    <aside className="w-64 shrink-0 border-r border-brand-border flex flex-col bg-brand-surface">
       <div className="px-6 py-6 border-b border-brand-border/50">
         <div className="flex items-center gap-3">
           <div className="w-10 h-10 rounded-xl bg-brand-accent/10 border border-brand-accent/20 flex items-center justify-center">
@@ -42,10 +42,10 @@ export default function Sidebar() {
               end={end}
               className={({ isActive }) =>
                 cn(
-                  "flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium transition-all duration-300",
+                  "flex items-center gap-3 px-4 py-2.5 rounded-lg text-sm font-medium transition-colors duration-150",
                   isActive
-                    ? "bg-brand-white/5 text-brand-white border border-brand-white/10"
-                    : "text-brand-muted hover:text-brand-white hover:bg-brand-white/5 border border-transparent"
+                    ? "bg-brand-accent/10 text-brand-accent"
+                    : "text-brand-muted hover:text-brand-white hover:bg-brand-dark/60"
                 )
               }
             >
@@ -55,15 +55,15 @@ export default function Sidebar() {
           );
         })}
       </nav>
-      <div className="p-4 border-t border-brand-border/50 space-y-3">
+      <div className="p-4 border-t border-brand-border space-y-3">
         {user && (
-          <div className="px-4 py-2 rounded-xl bg-brand-surface/30">
+          <div className="px-4 py-2 rounded-lg bg-brand-dark/60">
             <div className="text-[11px] font-mono text-brand-muted truncate">{user.email}</div>
           </div>
         )}
         <button
           onClick={logout}
-          className="flex items-center gap-3 w-full px-4 py-3 rounded-xl text-sm font-medium text-brand-muted hover:text-brand-white hover:bg-red-500/10 border border-transparent hover:border-red-500/20 transition-all duration-300"
+          className="flex items-center gap-3 w-full px-4 py-2.5 rounded-lg text-sm font-medium text-brand-muted hover:text-red-600 hover:bg-red-50 transition-colors duration-150"
         >
           <LogOut size={18} />
           Sair

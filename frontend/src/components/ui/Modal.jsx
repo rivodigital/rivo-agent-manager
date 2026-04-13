@@ -4,7 +4,7 @@ export default function Modal({ open, onClose, title, children, size = "md" }) {
   if (!open) return null;
   const w = { sm: "max-w-md", md: "max-w-xl", lg: "max-w-3xl", xl: "max-w-5xl" }[size];
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-brand-black/80 backdrop-blur-sm" onClick={onClose}>
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/40 backdrop-blur-sm" onClick={onClose}>
       <div
         className={`card w-full ${w} mx-4 max-h-[90vh] overflow-y-auto`}
         onClick={(e) => e.stopPropagation()}
