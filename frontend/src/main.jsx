@@ -1,4 +1,5 @@
 import React from "react";
+window.__RIVO_BUILD__ = "v4";
 import ReactDOM from "react-dom/client";
 import { BrowserRouter } from "react-router-dom";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";

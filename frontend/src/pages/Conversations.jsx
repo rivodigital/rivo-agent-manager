@@ -6,7 +6,6 @@ import Badge from "../components/ui/Badge.jsx";
 import {
   MessageSquare,
   Search,
-  X,
   Phone,
   Clock,
   User,
