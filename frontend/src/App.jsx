@@ -1,6 +1,7 @@
 import { Routes, Route, Navigate } from "react-router-dom";
 import Layout from "./components/layout/Layout.jsx";
 import ProtectedRoute from "./components/ProtectedRoute.jsx";
+import ErrorBoundary from "./components/ErrorBoundary.jsx";
 import Login from "./pages/Login.jsx";
 import Dashboard from "./pages/Dashboard.jsx";
 import Clients from "./pages/Clients.jsx";
@@ -12,28 +13,36 @@ import Conversations from "./pages/Conversations.jsx";
 import Blocklist from "./pages/Blocklist.jsx";
 import Users from "./pages/Users.jsx";
 
+// Convenience wrapper — one boundary per page so sidebar stays intact on crash
+function Page({ children }) {
+  return <ErrorBoundary>{children}</ErrorBoundary>;
+}
+
 export default function App() {
   return (
-    <Routes>
-      <Route path="/login" element={<Login />} />
-      <Route
-        element={
-          <ProtectedRoute>
-            <Layout />
-          </ProtectedRoute>
-        }
-      >
-        <Route index element={<Dashboard />} />
-        <Route path="clients" element={<Clients />} />
-        <Route path="clients/:id" element={<ClientDetail />} />
-        <Route path="agents" element={<Agents />} />
-        <Route path="agents/:id" element={<AgentConfig />} />
-        <Route path="providers" element={<Providers />} />
-        <Route path="conversations" element={<Conversations />} />
-        <Route path="blocklist" element={<Blocklist />} />
-        <Route path="users" element={<Users />} />
-        <Route path="*" element={<Navigate to="/" />} />
-      </Route>
-    </Routes>
+    // Top-level boundary: last-resort catch-all (e.g. Layout itself crashes)
+    <ErrorBoundary>
+      <Routes>
+        <Route path="/login" element={<Login />} />
+        <Route
+          element={
+            <ProtectedRoute>
+              <Layout />
+            </ProtectedRoute>
+          }
+        >
+          <Route index element={<Page><Dashboard /></Page>} />
+          <Route path="clients" element={<Page><Clients /></Page>} />
+          <Route path="clients/:id" element={<Page><ClientDetail /></Page>} />
+          <Route path="agents" element={<Page><Agents /></Page>} />
+          <Route path="agents/:id" element={<Page><AgentConfig /></Page>} />
+          <Route path="providers" element={<Page><Providers /></Page>} />
+          <Route path="conversations" element={<Page><Conversations /></Page>} />
+          <Route path="blocklist" element={<Page><Blocklist /></Page>} />
+          <Route path="users" element={<Page><Users /></Page>} />
+          <Route path="*" element={<Navigate to="/" />} />
+        </Route>
+      </Routes>
+    </ErrorBoundary>
   );
 }
