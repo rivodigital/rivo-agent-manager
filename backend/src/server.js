@@ -20,6 +20,7 @@ import webhookConfigs from "./routes/webhook-configs.js";
 import { processPendingFollowUps } from "./services/follow-up.js";
 
 const app = express();
+app.set("trust proxy", 1); // trust first proxy (Caddy/nginx) so req.ip reflects real client IP
 app.use(cors());
 app.use(express.json({ limit: "5mb" }));
 

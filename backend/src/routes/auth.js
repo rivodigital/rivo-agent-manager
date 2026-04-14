@@ -1,6 +1,7 @@
 import { Router } from "express";
 import bcrypt from "bcryptjs";
 import jwt from "jsonwebtoken";
+import rateLimit from "express-rate-limit";
 import { prisma } from "../db.js";
 import { auth } from "../middleware/auth.js";
 
@@ -8,7 +9,16 @@ const router = Router();
 const JWT_SECRET = process.env.JWT_SECRET;
 const JWT_EXPIRES_IN = process.env.JWT_EXPIRES_IN || "7d";
 
-router.post("/login", async (req, res) => {
+const loginLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000, // 15 minutes
+  max: 10,                   // max 10 attempts per IP per window
+  standardHeaders: true,     // emit RateLimit-* headers (RFC 6585 draft-7)
+  legacyHeaders: false,      // suppress X-RateLimit-* headers
+  message: { error: "Muitas tentativas, tente novamente em alguns minutos" },
+  keyGenerator: (req) => req.ip,
+});
+
+router.post("/login", loginLimiter, async (req, res) => {
   const { email, password } = req.body || {};
   if (!email || !password) {
     return res.status(400).json({ error: "email and password required" });

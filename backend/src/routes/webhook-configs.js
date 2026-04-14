@@ -1,6 +1,6 @@
 import { Router } from "express";
 import { prisma } from "../db.js";
-import { dispatchWebhook } from "../services/webhook-dispatcher.js";
+import { dispatchWebhook, validateWebhookUrl } from "../services/webhook-dispatcher.js";
 import { requireRole } from "../middleware/rbac.js";
 
 const r = Router({ mergeParams: true });
@@ -25,6 +25,13 @@ r.post("/", requireRole("admin"), async (req, res) => {
   try {
     const { url, events, headers, active } = req.body;
     if (!url || !events) return res.status(400).json({ error: "url and events required" });
+
+    try {
+      await validateWebhookUrl(url);
+    } catch (ssrfErr) {
+      return res.status(400).json({ error: ssrfErr.message });
+    }
+
     const item = await prisma.webhookConfig.create({
       data: {
         agentId: req.params.agentId,
@@ -48,7 +55,16 @@ r.put("/:id", requireRole("admin"), async (req, res) => {
   try {
     const { url, events, headers, active } = req.body;
     const data = {};
-    if (url !== undefined) data.url = url;
+
+    if (url !== undefined) {
+      try {
+        await validateWebhookUrl(url);
+      } catch (ssrfErr) {
+        return res.status(400).json({ error: ssrfErr.message });
+      }
+      data.url = url;
+    }
+
     if (events !== undefined) data.events = JSON.stringify(Array.isArray(events) ? events : [events]);
     if (headers !== undefined) data.headers = headers ? JSON.stringify(headers) : null;
     if (active !== undefined) data.active = active;
