@@ -97,6 +97,8 @@ model KnowledgeFile {
   sortOrder Int      @default(0)
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
+
+  @@index([agentId])
 }
 
 model AgentNote {
@@ -106,6 +108,8 @@ model AgentNote {
   type      String
   content   String
   createdAt DateTime @default(now())
+
+  @@index([agentId, createdAt])
 }
 
 model WhatsAppInstance {
@@ -146,6 +150,7 @@ model Conversation {
   updatedAt          DateTime  @updatedAt
 
   @@unique([agentId, remoteJid])
+  @@index([agentId, updatedAt])
 }
 
 model Message {
@@ -160,6 +165,8 @@ model Message {
   costEstimate   Float?
   metadata       String?
   createdAt      DateTime     @default(now())
+
+  @@index([conversationId, createdAt])
 }
 
 model UsageLog {
@@ -174,6 +181,9 @@ model UsageLog {
   leadsQualified     Int      @default(0)
   leadsEscalated     Int      @default(0)
   createdAt          DateTime @default(now())
+
+  @@index([agentId, createdAt])
+  @@index([createdAt])
 }
 
 model Blocklist {
@@ -192,6 +202,8 @@ model FollowUp {
   status         String       @default("pending")
   sentAt         DateTime?
   createdAt      DateTime     @default(now())
+
+  @@index([scheduledAt, status])
 }
 
 model WebhookConfig {
@@ -204,4 +216,6 @@ model WebhookConfig {
   active    Boolean  @default(true)
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
+
+  @@index([agentId])
 }
