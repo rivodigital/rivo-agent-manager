@@ -34,3 +34,16 @@
         format console
     }
 }
+
+# Evolution API exposta externamente. Autenticação é feita pela própria
+# Evolution via header `apikey` (AUTHENTICATION_API_KEY no docker-compose).
+evolution.rivos.me {
+    encode gzip zstd
+
+    reverse_proxy evolution-api:8080
+
+    log {
+        output stdout
+        format console
+    }
+}
